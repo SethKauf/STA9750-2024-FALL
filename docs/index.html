@@ -67,6 +67,35 @@ ul.task-list li input[type="checkbox"] {
   }
 }</script>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -114,6 +143,19 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
+<p>Hi all, my name is Seth, I’m in the MS Statistics program at Baruch.</p>
+<p>I have some data science experience having taken a bootcamp in 2021 and having worked in the field since completing it.</p>
+<p>I’m in 3 classes this semester, one of which is making me learn and write a lot of math notation in markdown real fast, <span class="math inline">\(\log\times\Pr[D_{train}]=\prod_{i=1}^n(f_1(x_i)^{y_i} \times f_0(x_i)^{1-y_i})\times\log=\sum_{i=1}^n\log(f_1(x_i)^{y_i}\times f_0(x_i)^{1-y_i})\)</span> was a fun one. I also think <span class="math inline">\(k\in\Re\)</span> looks pretty cool.</p>
+<p>Anyways, I really like transit data, my first major project was trying to <a href="https://github.com/SethKauf/mta_service_delays">analyze and predict train delays on the MTA</a>. I wrote a <a href="https://medium.com/@sethkaufman7/scraping-the-midnight-oil-a96537b1aba1">short blog</a> about gathering MTA data from their Alerts webpage.</p>
+<p>I also am interested in sports data, for example, I want to do a project on how Shot Attempts affect a game and whether they truly matter (something broadcasters cried to the heavens it did this past NHL Stanley Cup Playoffs).</p>
+<p>My lukewarm take on modern data science, there’s a lot of hype around AI and rightfully so, but I feel there’s some disconnect between what we call AI and what people think of AI. It seems we’re still pretty far from things like autonomous robots, as cool as Bender might be.</p>
+<figure style="text-align: center;" class="figure">
+<img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNG5uMGs5NnkzdDJpdzJlNXY4eTNlcHY5cDdhajlxcG00MGRndXZ5NSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/mIZ9rPeMKefm0/giphy.webp" alt="as cool as Bender might be" class="figure-img">
+<figcaption>
+linked from GIPHY
+</figcaption>
+</figure>
+<p>Looking forward to a great semester. Feel free to direct message me if you want to connect on LinkedIn or elsewhere!</p>
 
 
 
