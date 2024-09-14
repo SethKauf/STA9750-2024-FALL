@@ -2,3 +2,21 @@
 title: "My first website!"
 ---
 
+Hi all, my name is Seth, I'm in the MS Statistics program at Baruch.
+
+I have some data science experience having taken a bootcamp in 2021 and having worked in the field since completing it.
+
+I'm in 3 classes this semester, one of which is making me learn and write a lot of math notation in markdown real fast, $\log\times\Pr[D_{train}]=\prod_{i=1}^n(f_1(x_i)^{y_i} \times f_0(x_i)^{1-y_i})\times\log=\sum_{i=1}^n\log(f_1(x_i)^{y_i}*f_0(x_i)^{1-y_i})$ was a fun one. I also think $k\in\Re$ looks pretty cool.
+
+Anyways, I really like transit data, my first major project was trying to [analyze and predict train delays on the MTA](https://github.com/SethKauf/mta_service_delays). I wrote a [short blog](https://medium.com/@sethkaufman7/scraping-the-midnight-oil-a96537b1aba1) about gathering MTA data from their Alerts website.\n 
+
+I also am interested in sports data, for example, I want to do a project on how Shot Attempts affect a game and whether they truly matter (something broadcasters cried to the heavens it did this past NHL Stanley Cup Playoffs).
+
+My lukewarm take on modern data science, there's a lot of hype around AI and rightfully so, but I feel there's some disconnect between what we call AI and what people think of AI. It seems we're still pretty far from things like autonomous robots, as cool as Bender might be.
+
+<figure style="text-align: center;">
+  <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNG5uMGs5NnkzdDJpdzJlNXY4eTNlcHY5cDdhajlxcG00MGRndXZ5NSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/mIZ9rPeMKefm0/giphy.webp" alt="as cool as Bender might be">
+  <figcaption>linked from GIPHY</figcaption>
+</figure>
+
+Looking forward to a great semester. Feel free to direct message me if you want to connect on LinkedIn or elsewhere!
