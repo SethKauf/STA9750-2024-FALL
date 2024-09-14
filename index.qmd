@@ -1,6 +1,5 @@
 ---
 title: "My first website!"
-format: html
 ---
 
 Hi all, my name is Seth, I'm in the MS Statistics program at Baruch.
@@ -20,4 +19,4 @@ My lukewarm take on modern data science, there's a lot of hype around AI and rig
   <figcaption>linked from GIPHY</figcaption>
 </figure>
 
-Looking forward to a great semester. Feel free to direct message me if you want to connect on LinkedIn or elsewhere!
+Looking forward to a great semester.\n\n Feel free to direct message me if you want to connect on LinkedIn or elsewhere!
