@@ -1,6 +1,26 @@
+---
+title: Mini Project01
+format: html
+---
+
+# Introduction
+This project for STA 9750 has us looking at Federal Transit Administration Data, specifically for 2022.
+
+We will try to answer some questions about transit from that year in this file.
+
+
+# Import Libraries
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(DT)
+library(dplyr)
+```
 
+# Import Data
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+# I had to rename several of the files on import,
+# When re-running my code, please be mindful of that
 FARES <- readxl::read_xlsx("2022_fare_revenue.xlsx") |>
   select(-`State/Parent NTD ID`, 
          -`Reporter Type`,
@@ -59,22 +79,21 @@ USAGE <- inner_join(TRIPS, MILES) |>
 
 sample_n(USAGE, 1000) |> 
   mutate(month=as.character(month)) |> 
-  # DT::datatable()
-  
-  head(USAGE,n=5)
+  DT::datatable(options =)
+```
 
-# Task 1: Rename column UZA Name to metro_area
-library(dplyr)
-
+## Task 1: Rename column UZA Name to metro_area
+```{r message=TRUE}
 colnames(USAGE)
 
 USAGE <- USAGE |> rename("metro_area" = "UZA Name")
 
 colnames(USAGE)
+```
 
+## Task 2: Find unique Modes, impute with a more understandable value using case-when
 
-# Task 2: Find unique Modes, impute with a more understandable value using case-when
-
+```{r message=TRUE}
 head(USAGE)
 USAGE |>
   distinct(Mode) |>
@@ -102,8 +121,6 @@ USAGE <- USAGE |>
     Mode == "VP" ~ "Vanpool",
     Mode == "YR" ~ "Hybrid Rail",
     TRUE ~ "Unknown"))
-USAGE
-
 
 head(USAGE)
 USAGE |>
@@ -115,39 +132,44 @@ USAGE <- USAGE |>     rename( "unlinked_passenger_trips" = "UPT",
   select( -`NTD ID`,
           -`3 Mode`)
 
-library(DT)
 
 sample_n(USAGE, 1000) |> 
   mutate(month=as.character(month)) |>
   DT::datatable()
+```
 
-# Task 3: Answer specific questions
-
-
+## Task 3: Answer specific questions
+``` {r message=TRUE}
 head(USAGE)
+```
 
-#3.1: Which transit agency had the most total VRM in this sample?
+### 3.1: Which transit agency had the most total VRM in this sample?
+``` {r echo=TRUE, message=TRUE}
 # A grouped summarize that takes the first returned item in descending order should get that
 USAGE |>
   group_by(Agency) |>
   summarize(n_vrm = n()) |>
   arrange(desc(n_vrm)) |>
   slice_head(n=1)
+```
 
-# Answer: New Jersey Transit Corporation with 2,048
+Answer: New Jersey Transit Corporation with 2,048
 
-# 3.2: Which transit mode had the most total VRM in this sample?
+### 3.2: Which transit mode had the most total VRM in this sample?
+``` {r echo=TRUE, message=TRUE}
 # Same code as 3.1 but replacing Agency with Mode
 USAGE |>
   group_by(Mode) |>
   summarize(n_vrm = n()) |>
   arrange(desc(n_vrm)) |>
   slice_head(n=1)
+```
 
-# Answer: Demand Response with 115,701
+Answer: Demand Response with 115,701
 
-# 3.3: How many trips were taken on the NYC Subway (Heavy Rail) in May 2024?
+### 3.3: How many trips were taken on the NYC Subway (Heavy Rail) in May 2024?
 
+``` {r echo=TRUE, message=TRUE}
 #install.packages("stringr")
 library(stringr)
 
@@ -172,25 +194,28 @@ USAGE |>
   filter(month == '2024-05-01',
          Agency == "MTA New York City Transit",
          Mode == "Heavy Rail") |>
-  select(unlinked_passenger_trips) #Answer: 180,458,819 trips
+  select(unlinked_passenger_trips)
+```
+
+Answer: 180,458,819 trips
 
 
-# 3.4: Which Mode of transport had the longest average trip in May 2024?
+### 3.4: Which Mode of transport had the longest average trip in May 2024?
 
+``` {r echo=TRUE, message=TRUE}
 USAGE |>
   filter(month == '2024-05-01') |>
   group_by(Mode) |>
   summarize(trips_avg = mean(unlinked_passenger_trips)) |>
   arrange(desc(trips_avg)) |>
   slice_head(n=1)
+```
+ Answer: Heavy Rail, with 14,836,486 average trips
+(I did this question before 3.4 was marked as unneccesary due to not having the correct feature to run this analysis, but I've left it in regardless)
 
-# Answer: Heavy Rail, with 14,836,486 average trips
-# I did this question before 3.4 was marked as unneccesary due to not having the correct feature to run this analysis
-# But I've left it in regardless
+### 3.5: How much did NYC Subway ridership fall between April 2019 and April 2020?
 
-# 3.5: How much did NYC Subway ridership fall between April 2019 and April 2020?
-
-
+``` {r echo=TRUE, message=TRUE}
 USAGE |>
   filter(Agency == "MTA New York City Transit",
          Mode == "Heavy Rail",
@@ -229,36 +254,43 @@ ggplot(data, aes(x = Date, y = Ridership.unlinked_passenger_trips)) +  # Change 
     axis.text = element_text(size = 12),  # Change axis text size
     panel.grid.minor = element_blank()  # Remove minor grid lines
   )
+```
 
-
-# Task 4: Find 3 more interesting facts in this data
-
+## Task 4: Find 3 more interesting facts in this data
+``` {r echo=TRUE, message=TRUE}
 head(USAGE, n=7)
+```
 
-# 4.1: What's the most miles traveled by agency + mode and how does it compare to the number of trips?
+### 4.1: What's the most miles traveled by agency + mode and how does it compare to the number of trips?
+``` {r echo=TRUE, message=TRUE}
 USAGE |>
   group_by(Agency, Mode) |>
   summarize(total_travel = sum(vehicle_revenue_miles, na.rm = TRUE), .groups="drop") |>
   arrange(desc(total_travel)) |>
-  slice_head(n=3) # NYC Subway leads the way in revenue miles, followed by NJT Bus and LA Bus
+  slice_head(n=3)
+```
+NYC Subway leads the way in revenue miles, followed by NJT Bus and LA Bus
 
-
+``` {r echo=TRUE, message=TRUE}
 USAGE |>
   group_by(Agency, Mode) |>
   summarize(total_travel = sum(unlinked_passenger_trips, na.rm = TRUE), .groups="drop") |>
   arrange(desc(total_travel)) |>
-  slice_head(n=3) # NYC Subway leads the way here as well, while NJT Bus is overtaken by NYC's bus system
-                  # The distance between the MTA and the next few is quite large
+  slice_head(n=3)
+```
+NYC Subway leads the way here as well, while NJT Bus is overtaken by NYC's bus system. The distance between the MTA and the next few is quite large.
 
 
-# 4.2 Which Agency manages the most Modes?
+### 4.2 Which Agency manages the most Modes?
+``` {r echo=TRUE, message=TRUE}
 USAGE |>
   group_by(Agency) |>
   summarize(total_modes = n_distinct(Mode)) |>
   arrange(desc(total_modes)) # Massachusetts Bay Transportation Authority
+```
 
-
-# 4.3 Which date saw the most usage for the NYC Subway?
+### 4.3 Which date saw the most usage for the NYC Subway?
+``` {r echo=TRUE, message=TRUE}
 USAGE |>
   filter(Agency == 'MTA New York City Transit',
          Mode == 'Heavy Rail') |>
@@ -275,10 +307,11 @@ USAGE |>
   summarize(most_trips = sum(unlinked_passenger_trips, na.rm = TRUE)) |>
   arrange((most_trips)) |>
   slice_head(n=1) # 2020-04-01
+```
+2019-10-01 had the most while 2020-04-01 had the fewest
 
-
-# Task 5: Create a new table with annual total (sum) for UPT and VRM for 2022
-
+## Task 5: Create a new table with annual total (sum) for UPT and VRM for 2022
+``` {r echo=TRUE, message=TRUE}
 USAGE <- inner_join(TRIPS, MILES) |>
   mutate(`NTD ID` = as.integer(`NTD ID`))
 
@@ -346,59 +379,76 @@ USAGE_AND_FINANCIALS <- left_join(USAGE_2022_ANNUAL,
   drop_na()
 
 
-USAGE_AND_FINANCIALS
+head(USAGE_AND_FINANCIALS,n=7)
+```
 
-# Task 6: Answer the following 6 questions using USAGE_AND_FINANCIALS
+## Task 6: Answer the following 6 questions using USAGE_AND_FINANCIALS
 
-# 6.1: Which transit system (agency and mode) had the most UPT in 2022?
+### 6.1: Which transit system (agency and mode) had the most UPT in 2022?
 
+``` {r echo=TRUE, message=TRUE}
 USAGE_AND_FINANCIALS |>
   group_by(`Agency`, `Mode`) |>
   summarize(Total_UPT = sum(UPT, na.rm=TRUE), .groups="drop") |>
   arrange(desc(Total_UPT)) |>
-  slice_head(n=1) # MTA New York City Transit -- Heavy Rail
+  slice_head(n=1)
+```
+MTA New York City Transit -- Heavy Rail
 
 
-# 6.2: Which transit system (agency and mode) had the highest farebox recovery,
-# defined as the highest ratio of Total Fares to Expenses?
-
+### 6.2: Which transit system (agency and mode) had the highest farebox recovery, defined as the highest ratio of Total Fares to Expenses?
+``` {r echo=TRUE, message=TRUE}
 USAGE_AND_FINANCIALS |>
   group_by(`Agency`,`Mode`) |>
   summarize(fbx_rcv = sum(`Total Fares`, na.rm = TRUE) / sum(`Expenses`, na.rm = TRUE), .groups="drop") |>
   arrange(desc(fbx_rcv)) |>
-  slice_head(n=1) # Transit Authority of Central Kentucky -- Vanpool
+  slice_head(n=1)
+```
+Transit Authority of Central Kentucky -- Vanpool
 
-# 6.3: Which transit system (agency and mode) had the lowest expenses per UPT?
+### 6.3: Which transit system (agency and mode) had the lowest expenses per UPT?
+``` {r echo=TRUE, message=TRUE}
 USAGE_AND_FINANCIALS |>
   filter(UPT >= 1) |>
   group_by(`Agency`,`Mode`) |>
   summarize(lwst_exp_upt =  sum(`Expenses`, na.rm = TRUE) / sum(`UPT`, na.rm = TRUE), .groups="drop") |>
   arrange(lwst_exp_upt) |>
-  slice_head(n=1) # North Caroline State University -- Bus
+  slice_head(n=1)
+```
+North Caroline State University -- Bus
   
 
-# 6.4: Which transit system (agency and mode) had the highest total fares per UPT?
+### 6.4: Which transit system (agency and mode) had the highest total fares per UPT?
+``` {r echo=TRUE, message=TRUE}
 USAGE_AND_FINANCIALS |>
   filter(`Total Fares` >= 1) |>
   group_by(`Agency`,`Mode`) |>
   summarize(hghst_fr_upt = sum(`UPT`, na.rm = TRUE) / sum(`Total Fares`, na.rm = TRUE), .groups="drop") |>
   # summarize(hghst_fr_upt = sum(`UPT`, na.rm = TRUE) / sum(`Total Fares`, na.rm = TRUE), .groups="drop")  |>
   arrange(desc(hghst_fr_upt)) |>
-  slice_head(n=1) # Athens-Clarke County Unified Government -- Bus
-    
+  slice_head(n=1)
+```
+Athens-Clarke County Unified Government -- Bus
+  
 
-# 6.5: Which transit system (agency and mode) had the lowest expenses per VRM?
+### 6.5: Which transit system (agency and mode) had the lowest expenses per VRM?
+``` {r echo=TRUE, message=TRUE}
 USAGE_AND_FINANCIALS |>
   filter(UPT >= 1) |>
   group_by(`Agency`,`Mode`) |>
   summarize(lwst_exp_vrm = sum(`Expenses`, na.rm = TRUE) / sum(`VRM`, na.rm = TRUE), .groups="drop") |>
   arrange(lwst_exp_vrm) |>
-  slice_head(n=1) # New Mexico Department of Transportation -- Vanpool
+  slice_head(n=1)
+```
+New Mexico Department of Transportation -- Vanpool
 
-# 6.6: Which transit system (agency and mode) had the highest total fares per VRM?
+### 6.6: Which transit system (agency and mode) had the highest total fares per VRM?
+``` {r echo=TRUE, message=TRUE}
 USAGE_AND_FINANCIALS |>
   filter(`Total Fares` >= 1) |>
   group_by(`Agency`,`Mode`) |>
   summarize(hghst_fr_vrm = sum(`VRM`, na.rm = TRUE) / sum(`Total Fares`, na.rm = TRUE), .groups="drop") |>
   arrange(desc(hghst_fr_vrm)) |>
-  slice_head(n=1) # Athens-Clarke County Unified Government -- Bus
+  slice_head(n=1)
+```
+Athens-Clarke County Unified Government -- Bus
