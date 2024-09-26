@@ -1,0 +1,33 @@
+/* styles.css */
+.dataTables_wrapper .dataTables_paginate {
+  color: #fff; /* Change pagination to white */
+}
+
+table.dataTable {
+  background-color: #222; /* Darken table background */
+  color: #fff; /* Lighten text color */
+  border-color: #444; /* Border color for visibility */
+}
+
+/* Customize the search filter box */
+.dataTables_filter label {
+  color: #fff; /* White label text */
+}
+
+.dataTables_filter input {
+  background-color: #333; /* Dark background for input */
+  color: #fff;             /* Light text for input */
+  border: 1px solid #555;  /* Border for visibility */
+}
+
+/* Adjust dropdown filters for individual columns (if enabled) */
+.dataTables_length select {
+  background-color: #333; /* Dark background */
+  color: #fff;            /* Light text */
+  border: 1px solid #555; /* Add a border for better contrast */
+}
+
+/* Style the text for "Show X entries" */
+.dataTables_length label {
+  color: #fff; /* Change text to white or any preferred color */
+}

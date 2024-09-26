@@ -1,13 +1,14 @@
 ---
 title: Mini Project01
 format: html
+theme: solar
+css: styles.css
 ---
 
 # Introduction
 This project for STA 9750 has us looking at Federal Transit Administration Data, specifically for 2022.
 
 We will try to answer some questions about transit from that year in this file.
-
 
 # Import Libraries
 
@@ -79,7 +80,7 @@ USAGE <- inner_join(TRIPS, MILES) |>
 
 sample_n(USAGE, 1000) |> 
   mutate(month=as.character(month)) |> 
-  DT::datatable(options =)
+  DT::datatable()
 ```
 
 ## Task 1: Rename column UZA Name to metro_area
