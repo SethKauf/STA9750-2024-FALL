@@ -31,3 +31,28 @@ table.dataTable {
 .dataTables_length label {
   color: #fff; /* Change text to white or any preferred color */
 }
+
+/* Style the select dropdown within the DataTable */
+.dataTables_length select {
+  background-color: #fff; /* White background for the dropdown */
+  color: #000;            /* Black text */
+  border: 1px solid #ccc; /* Optional: add a border */
+}
+
+/* Optional: Style the dropdown when it is active */
+.dataTables_length select:focus {
+  outline: none; /* Remove default outline */
+  border-color: #fff; /* Change border color on focus */
+}
+
+/* Optional: Change the text color for options in the dropdown */
+.dataTables_length select option {
+  background-color: #fff; /* White background for options */
+  color: #000;            /* Black text for options */
+}
+
+/* Optional: Style the dropdown when it is active */
+.dataTables_length select:focus {
+  outline: none; /* Remove default outline */
+  border-color: #007bff; /* Change border color on focus */
+}
