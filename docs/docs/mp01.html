@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>mp01 – STA 9750 2024 Submission Material</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="dark">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-fixed fullcontent">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">STA 9750 2024 Submission Material</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+
+
+<p>library(tidyverse) library(DT)</p>
+<p>FARES &lt;- readxl::read_xlsx(“2022_fare_revenue.xlsx”) |&gt; select(-<code>State/Parent NTD ID</code>, -<code>Reporter Type</code>, -<code>Reporting Module</code>, -<code>TOS</code>, -<code>Passenger Paid Fares</code>, -<code>Organization Paid Fares</code>) |&gt; filter(<code>Expense Type</code> == “Funds Earned During Period”) |&gt; select(-<code>Expense Type</code>)</p>
+<p>EXPENSES &lt;- readr::read_csv(“2022_expenses.csv”) |&gt; select(<code>NTD ID</code>, <code>Agency</code>, <code>Total</code>, <code>Mode</code>) |&gt; mutate(<code>NTD ID</code> = as.integer(<code>NTD ID</code>)) |&gt; rename(Expenses = Total) |&gt; group_by(<code>NTD ID</code>, <code>Mode</code>) |&gt; summarize(Expenses = sum(Expenses)) |&gt; ungroup()</p>
+<p>FINANCIALS &lt;- inner_join(FARES, EXPENSES, join_by(<code>NTD ID</code>, <code>Mode</code>))</p>
+<p>TRIPS &lt;- readxl::read_xlsx(“ridership.xlsx”, sheet=“UPT”) |&gt; filter(<code>Mode/Type of Service Status</code> == “Active”) |&gt; select(-<code>Legacy NTD ID</code>, -<code>Reporter Type</code>, -<code>Mode/Type of Service Status</code>, -<code>UACE CD</code>, -<code>TOS</code>) |&gt; pivot_longer(-c(<code>NTD ID</code>:<code>3 Mode</code>), names_to=“month”, values_to=“UPT”) |&gt; drop_na() |&gt; mutate(month=my(month)) # Parse _m_onth _y_ear date specs</p>
+<p>MILES &lt;- readxl::read_xlsx(“ridership.xlsx”, sheet=“VRM”) |&gt; filter(<code>Mode/Type of Service Status</code> == “Active”) |&gt; select(-<code>Legacy NTD ID</code>, -<code>Reporter Type</code>, -<code>Mode/Type of Service Status</code>, -<code>UACE CD</code>, -<code>TOS</code>) |&gt; pivot_longer(-c(<code>NTD ID</code>:<code>3 Mode</code>), names_to=“month”, values_to=“VRM”) |&gt; drop_na() |&gt; group_by(<code>NTD ID</code>, <code>Agency</code>, <code>UZA Name</code>, <code>Mode</code>, <code>3 Mode</code>, month) |&gt; summarize(VRM = sum(VRM)) |&gt; ungroup() |&gt; mutate(month=my(month)) # Parse _m_onth _y_ear date specs</p>
+<p>USAGE &lt;- inner_join(TRIPS, MILES) |&gt; mutate(<code>NTD ID</code> = as.integer(<code>NTD ID</code>))</p>
+<p>sample_n(USAGE, 1000) |&gt; mutate(month=as.character(month)) |&gt; # DT::datatable()</p>
+<p>head(USAGE,n=5)</p>
+<section id="task-1-rename-column-uza-name-to-metro_area" class="level1">
+<h1>Task 1: Rename column UZA Name to metro_area</h1>
+<p>library(dplyr)</p>
+<p>colnames(USAGE)</p>
+<p>USAGE &lt;- USAGE |&gt; rename(“metro_area” = “UZA Name”)</p>
+<p>colnames(USAGE)</p>
+</section>
+<section id="task-2-find-unique-modes-impute-with-a-more-understandable-value-using-case-when" class="level1">
+<h1>Task 2: Find unique Modes, impute with a more understandable value using case-when</h1>
+<p>head(USAGE) USAGE |&gt; distinct(Mode) |&gt; arrange(Mode)</p>
+<p>USAGE &lt;- USAGE |&gt; mutate(Mode=case_when( Mode == “AR” ~ “Alaska Railroad”, Mode == “CB” ~ “Commuter Bus”, Mode == “CC” ~ “Cable Car”, Mode == “CR” ~ “Commuter Rail”, Mode == “DR” ~ “Demand Response”, Mode == “FB” ~ “Ferryboat”, Mode == “HR” ~ “Heavy Rail”, Mode == “IP” ~ “Inclined Plane”, Mode == “LR” ~ “Light Rail”, Mode == “MB” ~ “Bus”, Mode == “MG” ~ “Monorail and Automated Guideway modes”, Mode == “PB” ~ “Publico”, Mode == “RB” ~ “Bus Rapid Transit”, Mode == “SR” ~ “Streetcar Rail”, Mode == “TB” ~ “Trolleybus”, Mode == “TR” ~ “Aerial Tramways”, Mode == “VP” ~ “Vanpool”, Mode == “YR” ~ “Hybrid Rail”, TRUE ~ “Unknown”)) USAGE</p>
+<p>head(USAGE) USAGE |&gt; distinct(Mode) |&gt; arrange(Mode)</p>
+<p>USAGE &lt;- USAGE |&gt; rename( “unlinked_passenger_trips” = “UPT”, “vehicle_revenue_miles” = “VRM”) |&gt; select( -<code>NTD ID</code>, -<code>3 Mode</code>)</p>
+<p>library(DT)</p>
+<p>sample_n(USAGE, 1000) |&gt; mutate(month=as.character(month)) |&gt; DT::datatable()</p>
+</section>
+<section id="task-3-answer-specific-questions" class="level1">
+<h1>Task 3: Answer specific questions</h1>
+<p>head(USAGE)</p>
+<p>#3.1: Which transit agency had the most total VRM in this sample? # A grouped summarize that takes the first returned item in descending order should get that USAGE |&gt; group_by(Agency) |&gt; summarize(n_vrm = n()) |&gt; arrange(desc(n_vrm)) |&gt; slice_head(n=1)</p>
+</section>
+<section id="answer-new-jersey-transit-corporation-with-2048" class="level1">
+<h1>Answer: New Jersey Transit Corporation with 2,048</h1>
+</section>
+<section id="which-transit-mode-had-the-most-total-vrm-in-this-sample" class="level1">
+<h1>3.2: Which transit mode had the most total VRM in this sample?</h1>
+</section>
+<section id="same-code-as-3.1-but-replacing-agency-with-mode" class="level1">
+<h1>Same code as 3.1 but replacing Agency with Mode</h1>
+<p>USAGE |&gt; group_by(Mode) |&gt; summarize(n_vrm = n()) |&gt; arrange(desc(n_vrm)) |&gt; slice_head(n=1)</p>
+</section>
+<section id="answer-demand-response-with-115701" class="level1">
+<h1>Answer: Demand Response with 115,701</h1>
+</section>
+<section id="how-many-trips-were-taken-on-the-nyc-subway-heavy-rail-in-may-2024" class="level1">
+<h1>3.3: How many trips were taken on the NYC Subway (Heavy Rail) in May 2024?</h1>
+<p>#install.packages(“stringr”) library(stringr)</p>
+</section>
+<section id="first-checking-to-ensure-that-may-2024-is-only-denoted-by-2024-05-01" class="level1">
+<h1>First checking to ensure that May 2024 is only denoted by 2024-05-01</h1>
+<p>USAGE |&gt; filter(str_detect(month, “2024-05-”)) |&gt; distinct(month) #checks out</p>
+</section>
+<section id="ensuring-i-get-the-right-agency-name" class="level1">
+<h1>Ensuring I get the right Agency name</h1>
+<p>USAGE |&gt; filter(str_detect(Agency,“MTA”)) |&gt; distinct(Agency)</p>
+</section>
+<section id="unlinked-passenger-trips-upt-are-defined-as" class="level1">
+<h1>Unlinked Passenger Trips (UPT) are defined as:</h1>
+</section>
+<section id="the-number-of-passengers-who-board-public-transportation-vehicles." class="level1">
+<h1>The number of passengers who board public transportation vehicles.</h1>
+</section>
+<section id="passengers-are-counted-each-time-they-board-vehicles" class="level1">
+<h1>Passengers are counted each time they board vehicles</h1>
+</section>
+<section id="no-matter-how-many-vehicles-they-use-to-travel-from-their-origin" class="level1">
+<h1>no matter how many vehicles they use to travel from their origin</h1>
+</section>
+<section id="to-their-destination." class="level1">
+<h1>to their destination.</h1>
+<p>USAGE |&gt; filter(month == ‘2024-05-01’, Agency == “MTA New York City Transit”, Mode == “Heavy Rail”) |&gt; select(unlinked_passenger_trips) #Answer: 180,458,819 trips</p>
+</section>
+<section id="which-mode-of-transport-had-the-longest-average-trip-in-may-2024" class="level1">
+<h1>3.4: Which Mode of transport had the longest average trip in May 2024?</h1>
+<p>USAGE |&gt; filter(month == ‘2024-05-01’) |&gt; group_by(Mode) |&gt; summarize(trips_avg = mean(unlinked_passenger_trips)) |&gt; arrange(desc(trips_avg)) |&gt; slice_head(n=1)</p>
+</section>
+<section id="answer-heavy-rail-with-14836486-average-trips" class="level1">
+<h1>Answer: Heavy Rail, with 14,836,486 average trips</h1>
+</section>
+<section id="i-did-this-question-before-3.4-was-marked-as-unneccesary-due-to-not-having-the-correct-feature-to-run-this-analysis" class="level1">
+<h1>I did this question before 3.4 was marked as unneccesary due to not having the correct feature to run this analysis</h1>
+</section>
+<section id="but-ive-left-it-in-regardless" class="level1">
+<h1>But I’ve left it in regardless</h1>
+</section>
+<section id="how-much-did-nyc-subway-ridership-fall-between-april-2019-and-april-2020" class="level1">
+<h1>3.5: How much did NYC Subway ridership fall between April 2019 and April 2020?</h1>
+<p>USAGE |&gt; filter(Agency == “MTA New York City Transit”, Mode == “Heavy Rail”, month &gt;= ‘2019-04-01’, month &lt; ‘2020-05-01’) |&gt; select(unlinked_passenger_trips)</p>
+</section>
+<section id="lets-plot-the-ridership-numbers" class="level1">
+<h1>Let’s plot the ridership numbers</h1>
+<p>library(ggplot2) library(lubridate)</p>
+<p>dates &lt;- seq(ymd(“2019-04-01”), by = “month”, length.out = 13) ridership &lt;- c(USAGE |&gt; filter(month &gt;= ‘2019-04-01’, month &lt; ‘2020-05-01’, Agency == ‘MTA New York City Transit’, Mode == ‘Heavy Rail’))</p>
+</section>
+<section id="create-a-data-frame" class="level1">
+<h1>Create a data frame</h1>
+<p>data &lt;- data.frame(Date = dates, Ridership = ridership)</p>
+</section>
+<section id="install.packagesscales" class="level1">
+<h1>install.packages(“scales”)</h1>
+<p>library(scales)</p>
+</section>
+<section id="plot-ridership-over-time" class="level1">
+<h1>Plot ridership over time</h1>
+<p>ggplot(data, aes(x = Date, y = Ridership.unlinked_passenger_trips)) + # Change x and y accordingly geom_line() + geom_point() + labs(title = “NYC Subway Ridership from April 2019 through April 2020”, x = “Date”, y = “Total Trips”) + scale_y_continuous(labels = label_number()) + # Prevent scientific notation theme_minimal() + theme( plot.title = element_text(hjust = 0.5, size = 16, face = “bold”), # Center the title and make it bold axis.title.x = element_text(size = 14), # Change x-axis title size axis.title.y = element_text(size = 14), # Change y-axis title size axis.text = element_text(size = 12), # Change axis text size panel.grid.minor = element_blank() # Remove minor grid lines )</p>
+</section>
+<section id="task-4-find-3-more-interesting-facts-in-this-data" class="level1">
+<h1>Task 4: Find 3 more interesting facts in this data</h1>
+<p>head(USAGE, n=7)</p>
+</section>
+<section id="whats-the-most-miles-traveled-by-agency-mode-and-how-does-it-compare-to-the-number-of-trips" class="level1">
+<h1>4.1: What’s the most miles traveled by agency + mode and how does it compare to the number of trips?</h1>
+<p>USAGE |&gt; group_by(Agency, Mode) |&gt; summarize(total_travel = sum(vehicle_revenue_miles, na.rm = TRUE), .groups=“drop”) |&gt; arrange(desc(total_travel)) |&gt; slice_head(n=3) # NYC Subway leads the way in revenue miles, followed by NJT Bus and LA Bus</p>
+<p>USAGE |&gt; group_by(Agency, Mode) |&gt; summarize(total_travel = sum(unlinked_passenger_trips, na.rm = TRUE), .groups=“drop”) |&gt; arrange(desc(total_travel)) |&gt; slice_head(n=3) # NYC Subway leads the way here as well, while NJT Bus is overtaken by NYC’s bus system # The distance between the MTA and the next few is quite large</p>
+</section>
+<section id="which-agency-manages-the-most-modes" class="level1">
+<h1>4.2 Which Agency manages the most Modes?</h1>
+<p>USAGE |&gt; group_by(Agency) |&gt; summarize(total_modes = n_distinct(Mode)) |&gt; arrange(desc(total_modes)) # Massachusetts Bay Transportation Authority</p>
+</section>
+<section id="which-date-saw-the-most-usage-for-the-nyc-subway" class="level1">
+<h1>4.3 Which date saw the most usage for the NYC Subway?</h1>
+<p>USAGE |&gt; filter(Agency == ‘MTA New York City Transit’, Mode == ‘Heavy Rail’) |&gt; group_by(month) |&gt; summarize(most_trips = sum(unlinked_passenger_trips, na.rm = TRUE)) |&gt; arrange(desc(most_trips)) |&gt; slice_head(n=1) # 2019-10-01</p>
+</section>
+<section id="conversely-which-had-the-fewest" class="level1">
+<h1>conversely, which had the fewest?</h1>
+<p>USAGE |&gt; filter(Agency == ‘MTA New York City Transit’, Mode == ‘Heavy Rail’) |&gt; group_by(month) |&gt; summarize(most_trips = sum(unlinked_passenger_trips, na.rm = TRUE)) |&gt; arrange((most_trips)) |&gt; slice_head(n=1) # 2020-04-01</p>
+</section>
+<section id="task-5-create-a-new-table-with-annual-total-sum-for-upt-and-vrm-for-2022" class="level1">
+<h1>Task 5: Create a new table with annual total (sum) for UPT and VRM for 2022</h1>
+<p>USAGE &lt;- inner_join(TRIPS, MILES) |&gt; mutate(<code>NTD ID</code> = as.integer(<code>NTD ID</code>))</p>
+<p>USAGE &lt;- USAGE |&gt; mutate(Mode=case_when( Mode == “AR” ~ “Alaska Railroad”, Mode == “CB” ~ “Commuter Bus”, Mode == “CC” ~ “Cable Car”, Mode == “CR” ~ “Commuter Rail”, Mode == “DR” ~ “Demand Response”, Mode == “FB” ~ “Ferryboat”, Mode == “HR” ~ “Heavy Rail”, Mode == “IP” ~ “Inclined Plane”, Mode == “LR” ~ “Light Rail”, Mode == “MB” ~ “Bus”, Mode == “MG” ~ “Monorail and Automated Guideway modes”, Mode == “PB” ~ “Publico”, Mode == “RB” ~ “Bus Rapid Transit”, Mode == “SR” ~ “Streetcar Rail”, Mode == “TB” ~ “Trolleybus”, Mode == “TR” ~ “Aerial Tramways”, Mode == “VP” ~ “Vanpool”, Mode == “YR” ~ “Hybrid Rail”, TRUE ~ “Unknown”))</p>
+<p>USAGE_2022_ANNUAL &lt;- USAGE |&gt; select(-<code>3 Mode</code>) |&gt; rename(“metro_area” = “UZA Name”) |&gt; filter(year(month)==‘2022’) |&gt; group_by(<code>NTD ID</code>, <code>Agency</code>,<code>metro_area</code>,<code>Mode</code>) |&gt; summarize(UPT = sum(UPT), VRM = sum(VRM)) |&gt; ungroup()</p>
+<p>head(USAGE_2022_ANNUAL, n=2)</p>
+<p>FINANCIALS &lt;- FINANCIALS |&gt; mutate(Mode=case_when( Mode == “AR” ~ “Alaska Railroad”, Mode == “CB” ~ “Commuter Bus”, Mode == “CC” ~ “Cable Car”, Mode == “CR” ~ “Commuter Rail”, Mode == “DR” ~ “Demand Response”, Mode == “FB” ~ “Ferryboat”, Mode == “HR” ~ “Heavy Rail”, Mode == “IP” ~ “Inclined Plane”, Mode == “LR” ~ “Light Rail”, Mode == “MB” ~ “Bus”, Mode == “MG” ~ “Monorail and Automated Guideway modes”, Mode == “PB” ~ “Publico”, Mode == “RB” ~ “Bus Rapid Transit”, Mode == “SR” ~ “Streetcar Rail”, Mode == “TB” ~ “Trolleybus”, Mode == “TR” ~ “Aerial Tramways”, Mode == “VP” ~ “Vanpool”, Mode == “YR” ~ “Hybrid Rail”, TRUE ~ “Unknown”))</p>
+<p>USAGE_AND_FINANCIALS &lt;- left_join(USAGE_2022_ANNUAL, FINANCIALS, join_by(<code>NTD ID</code>, <code>Mode</code>)) |&gt; drop_na()</p>
+<p>USAGE_AND_FINANCIALS</p>
+</section>
+<section id="task-6-answer-the-following-6-questions-using-usage_and_financials" class="level1">
+<h1>Task 6: Answer the following 6 questions using USAGE_AND_FINANCIALS</h1>
+</section>
+<section id="which-transit-system-agency-and-mode-had-the-most-upt-in-2022" class="level1">
+<h1>6.1: Which transit system (agency and mode) had the most UPT in 2022?</h1>
+<p>USAGE_AND_FINANCIALS |&gt; group_by(<code>Agency</code>, <code>Mode</code>) |&gt; summarize(Total_UPT = sum(UPT, na.rm=TRUE), .groups=“drop”) |&gt; arrange(desc(Total_UPT)) |&gt; slice_head(n=1) # MTA New York City Transit – Heavy Rail</p>
+</section>
+<section id="which-transit-system-agency-and-mode-had-the-highest-farebox-recovery" class="level1">
+<h1>6.2: Which transit system (agency and mode) had the highest farebox recovery,</h1>
+</section>
+<section id="defined-as-the-highest-ratio-of-total-fares-to-expenses" class="level1">
+<h1>defined as the highest ratio of Total Fares to Expenses?</h1>
+<p>USAGE_AND_FINANCIALS |&gt; group_by(<code>Agency</code>,<code>Mode</code>) |&gt; summarize(fbx_rcv = sum(<code>Total Fares</code>, na.rm = TRUE) / sum(<code>Expenses</code>, na.rm = TRUE), .groups=“drop”) |&gt; arrange(desc(fbx_rcv)) |&gt; slice_head(n=1) # Transit Authority of Central Kentucky – Vanpool</p>
+</section>
+<section id="which-transit-system-agency-and-mode-had-the-lowest-expenses-per-upt" class="level1">
+<h1>6.3: Which transit system (agency and mode) had the lowest expenses per UPT?</h1>
+<p>USAGE_AND_FINANCIALS |&gt; filter(UPT &gt;= 1) |&gt; group_by(<code>Agency</code>,<code>Mode</code>) |&gt; summarize(lwst_exp_upt = sum(<code>Expenses</code>, na.rm = TRUE) / sum(<code>UPT</code>, na.rm = TRUE), .groups=“drop”) |&gt; arrange(lwst_exp_upt) |&gt; slice_head(n=1) # North Caroline State University – Bus</p>
+</section>
+<section id="which-transit-system-agency-and-mode-had-the-highest-total-fares-per-upt" class="level1">
+<h1>6.4: Which transit system (agency and mode) had the highest total fares per UPT?</h1>
+<p>USAGE_AND_FINANCIALS |&gt; filter(<code>Total Fares</code> &gt;= 1) |&gt; group_by(<code>Agency</code>,<code>Mode</code>) |&gt; summarize(hghst_fr_upt = sum(<code>UPT</code>, na.rm = TRUE) / sum(<code>Total Fares</code>, na.rm = TRUE), .groups=“drop”) |&gt; # summarize(hghst_fr_upt = sum(<code>UPT</code>, na.rm = TRUE) / sum(<code>Total Fares</code>, na.rm = TRUE), .groups=“drop”) |&gt; arrange(desc(hghst_fr_upt)) |&gt; slice_head(n=1) # Athens-Clarke County Unified Government – Bus</p>
+</section>
+<section id="which-transit-system-agency-and-mode-had-the-lowest-expenses-per-vrm" class="level1">
+<h1>6.5: Which transit system (agency and mode) had the lowest expenses per VRM?</h1>
+<p>USAGE_AND_FINANCIALS |&gt; filter(UPT &gt;= 1) |&gt; group_by(<code>Agency</code>,<code>Mode</code>) |&gt; summarize(lwst_exp_vrm = sum(<code>Expenses</code>, na.rm = TRUE) / sum(<code>VRM</code>, na.rm = TRUE), .groups=“drop”) |&gt; arrange(lwst_exp_vrm) |&gt; slice_head(n=1) # New Mexico Department of Transportation – Vanpool</p>
+</section>
+<section id="which-transit-system-agency-and-mode-had-the-highest-total-fares-per-vrm" class="level1">
+<h1>6.6: Which transit system (agency and mode) had the highest total fares per VRM?</h1>
+<p>USAGE_AND_FINANCIALS |&gt; filter(<code>Total Fares</code> &gt;= 1) |&gt; group_by(<code>Agency</code>,<code>Mode</code>) |&gt; summarize(hghst_fr_vrm = sum(<code>VRM</code>, na.rm = TRUE) / sum(<code>Total Fares</code>, na.rm = TRUE), .groups=“drop”) |&gt; arrange(desc(hghst_fr_vrm)) |&gt; slice_head(n=1) # Athens-Clarke County Unified Government – Bus</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp("https:\/\/SethKauf\.github\.io\/STA9750-2024-FALL\/");
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

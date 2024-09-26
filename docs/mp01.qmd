@@ -1,0 +1,404 @@
+library(tidyverse)
+library(DT)
+
+FARES <- readxl::read_xlsx("2022_fare_revenue.xlsx") |>
+  select(-`State/Parent NTD ID`, 
+         -`Reporter Type`,
+         -`Reporting Module`,
+         -`TOS`,
+         -`Passenger Paid Fares`,
+         -`Organization Paid Fares`) |>
+  filter(`Expense Type` == "Funds Earned During Period") |>
+  select(-`Expense Type`)
+
+EXPENSES <- readr::read_csv("2022_expenses.csv") |>
+  select(`NTD ID`, 
+         `Agency`,
+         `Total`, 
+         `Mode`) |>
+  mutate(`NTD ID` = as.integer(`NTD ID`)) |>
+  rename(Expenses = Total) |>
+  group_by(`NTD ID`, `Mode`) |>
+  summarize(Expenses = sum(Expenses)) |>
+  ungroup()
+
+FINANCIALS <- inner_join(FARES, EXPENSES, join_by(`NTD ID`, `Mode`))
+
+TRIPS <- readxl::read_xlsx("ridership.xlsx", sheet="UPT") |>
+  filter(`Mode/Type of Service Status` == "Active") |>
+  select(-`Legacy NTD ID`, 
+         -`Reporter Type`, 
+         -`Mode/Type of Service Status`, 
+         -`UACE CD`, 
+         -`TOS`) |>
+  pivot_longer(-c(`NTD ID`:`3 Mode`), 
+               names_to="month", 
+               values_to="UPT") |>
+  drop_na() |>
+  mutate(month=my(month)) # Parse _m_onth _y_ear date specs
+
+MILES <- readxl::read_xlsx("ridership.xlsx", sheet="VRM") |>
+  filter(`Mode/Type of Service Status` == "Active") |>
+  select(-`Legacy NTD ID`, 
+         -`Reporter Type`, 
+         -`Mode/Type of Service Status`, 
+         -`UACE CD`, 
+         -`TOS`) |>
+  pivot_longer(-c(`NTD ID`:`3 Mode`), 
+               names_to="month", 
+               values_to="VRM") |>
+  drop_na() |>
+  group_by(`NTD ID`, `Agency`, `UZA Name`, 
+           `Mode`, `3 Mode`, month) |>
+  summarize(VRM = sum(VRM)) |>
+  ungroup() |>
+  mutate(month=my(month)) # Parse _m_onth _y_ear date specs
+
+USAGE <- inner_join(TRIPS, MILES) |>
+  mutate(`NTD ID` = as.integer(`NTD ID`))
+
+sample_n(USAGE, 1000) |> 
+  mutate(month=as.character(month)) |> 
+  # DT::datatable()
+  
+  head(USAGE,n=5)
+
+# Task 1: Rename column UZA Name to metro_area
+library(dplyr)
+
+colnames(USAGE)
+
+USAGE <- USAGE |> rename("metro_area" = "UZA Name")
+
+colnames(USAGE)
+
+
+# Task 2: Find unique Modes, impute with a more understandable value using case-when
+
+head(USAGE)
+USAGE |>
+  distinct(Mode) |>
+  arrange(Mode)
+
+
+USAGE <- USAGE |>
+  mutate(Mode=case_when(
+    Mode == "AR" ~ "Alaska Railroad",
+    Mode == "CB" ~ "Commuter Bus",
+    Mode == "CC" ~ "Cable Car",
+    Mode == "CR" ~ "Commuter Rail",
+    Mode == "DR" ~ "Demand Response",
+    Mode == "FB" ~ "Ferryboat",
+    Mode == "HR" ~ "Heavy Rail",
+    Mode == "IP" ~ "Inclined Plane",
+    Mode == "LR" ~ "Light Rail",
+    Mode == "MB" ~ "Bus",
+    Mode == "MG" ~ "Monorail and Automated Guideway modes",
+    Mode == "PB" ~ "Publico",
+    Mode == "RB" ~ "Bus Rapid Transit",
+    Mode == "SR" ~ "Streetcar Rail",
+    Mode == "TB" ~ "Trolleybus",
+    Mode == "TR" ~ "Aerial Tramways",
+    Mode == "VP" ~ "Vanpool",
+    Mode == "YR" ~ "Hybrid Rail",
+    TRUE ~ "Unknown"))
+USAGE
+
+
+head(USAGE)
+USAGE |>
+  distinct(Mode) |>
+  arrange(Mode)
+
+USAGE <- USAGE |>     rename( "unlinked_passenger_trips" = "UPT",
+                              "vehicle_revenue_miles" = "VRM") |>
+  select( -`NTD ID`,
+          -`3 Mode`)
+
+library(DT)
+
+sample_n(USAGE, 1000) |> 
+  mutate(month=as.character(month)) |>
+  DT::datatable()
+
+# Task 3: Answer specific questions
+
+
+head(USAGE)
+
+#3.1: Which transit agency had the most total VRM in this sample?
+# A grouped summarize that takes the first returned item in descending order should get that
+USAGE |>
+  group_by(Agency) |>
+  summarize(n_vrm = n()) |>
+  arrange(desc(n_vrm)) |>
+  slice_head(n=1)
+
+# Answer: New Jersey Transit Corporation with 2,048
+
+# 3.2: Which transit mode had the most total VRM in this sample?
+# Same code as 3.1 but replacing Agency with Mode
+USAGE |>
+  group_by(Mode) |>
+  summarize(n_vrm = n()) |>
+  arrange(desc(n_vrm)) |>
+  slice_head(n=1)
+
+# Answer: Demand Response with 115,701
+
+# 3.3: How many trips were taken on the NYC Subway (Heavy Rail) in May 2024?
+
+#install.packages("stringr")
+library(stringr)
+
+# First checking to ensure that May 2024 is only denoted by 2024-05-01
+USAGE |>
+  filter(str_detect(month, "2024-05-")) |>
+  distinct(month) #checks out
+
+# Ensuring I get the right Agency name
+USAGE |>
+  filter(str_detect(Agency,"MTA")) |>
+  distinct(Agency)
+
+# Unlinked Passenger Trips (UPT) are defined as:
+# The number of passengers who board public transportation vehicles.
+# Passengers are counted each time they board vehicles
+# no matter how many vehicles they use to travel from their origin
+# to their destination.
+
+
+USAGE |>
+  filter(month == '2024-05-01',
+         Agency == "MTA New York City Transit",
+         Mode == "Heavy Rail") |>
+  select(unlinked_passenger_trips) #Answer: 180,458,819 trips
+
+
+# 3.4: Which Mode of transport had the longest average trip in May 2024?
+
+USAGE |>
+  filter(month == '2024-05-01') |>
+  group_by(Mode) |>
+  summarize(trips_avg = mean(unlinked_passenger_trips)) |>
+  arrange(desc(trips_avg)) |>
+  slice_head(n=1)
+
+# Answer: Heavy Rail, with 14,836,486 average trips
+# I did this question before 3.4 was marked as unneccesary due to not having the correct feature to run this analysis
+# But I've left it in regardless
+
+# 3.5: How much did NYC Subway ridership fall between April 2019 and April 2020?
+
+
+USAGE |>
+  filter(Agency == "MTA New York City Transit",
+         Mode == "Heavy Rail",
+         month >= '2019-04-01',
+         month < '2020-05-01') |>
+  select(unlinked_passenger_trips)
+
+# Let's plot the ridership numbers
+library(ggplot2)
+library(lubridate)
+
+dates <- seq(ymd("2019-04-01"), by = "month", length.out = 13)
+ridership <- c(USAGE |>
+                 filter(month >= '2019-04-01',
+                        month < '2020-05-01',
+                        Agency == 'MTA New York City Transit',
+                        Mode == 'Heavy Rail'))
+
+# Create a data frame
+data <- data.frame(Date = dates, Ridership = ridership)
+
+# install.packages("scales")
+library(scales)
+
+# Plot ridership over time
+ggplot(data, aes(x = Date, y = Ridership.unlinked_passenger_trips)) +  # Change x and y accordingly
+  geom_line() +
+  geom_point() +
+  labs(title = "NYC Subway Ridership from April 2019 through April 2020", x = "Date", y = "Total Trips") +
+  scale_y_continuous(labels = label_number()) +  # Prevent scientific notation
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Center the title and make it bold
+    axis.title.x = element_text(size = 14),  # Change x-axis title size
+    axis.title.y = element_text(size = 14),  # Change y-axis title size
+    axis.text = element_text(size = 12),  # Change axis text size
+    panel.grid.minor = element_blank()  # Remove minor grid lines
+  )
+
+
+# Task 4: Find 3 more interesting facts in this data
+
+head(USAGE, n=7)
+
+# 4.1: What's the most miles traveled by agency + mode and how does it compare to the number of trips?
+USAGE |>
+  group_by(Agency, Mode) |>
+  summarize(total_travel = sum(vehicle_revenue_miles, na.rm = TRUE), .groups="drop") |>
+  arrange(desc(total_travel)) |>
+  slice_head(n=3) # NYC Subway leads the way in revenue miles, followed by NJT Bus and LA Bus
+
+
+USAGE |>
+  group_by(Agency, Mode) |>
+  summarize(total_travel = sum(unlinked_passenger_trips, na.rm = TRUE), .groups="drop") |>
+  arrange(desc(total_travel)) |>
+  slice_head(n=3) # NYC Subway leads the way here as well, while NJT Bus is overtaken by NYC's bus system
+                  # The distance between the MTA and the next few is quite large
+
+
+# 4.2 Which Agency manages the most Modes?
+USAGE |>
+  group_by(Agency) |>
+  summarize(total_modes = n_distinct(Mode)) |>
+  arrange(desc(total_modes)) # Massachusetts Bay Transportation Authority
+
+
+# 4.3 Which date saw the most usage for the NYC Subway?
+USAGE |>
+  filter(Agency == 'MTA New York City Transit',
+         Mode == 'Heavy Rail') |>
+  group_by(month) |>
+  summarize(most_trips = sum(unlinked_passenger_trips, na.rm = TRUE)) |>
+  arrange(desc(most_trips)) |>
+  slice_head(n=1) # 2019-10-01
+
+# conversely, which had the fewest?
+USAGE |>
+  filter(Agency == 'MTA New York City Transit',
+         Mode == 'Heavy Rail') |>
+  group_by(month) |>
+  summarize(most_trips = sum(unlinked_passenger_trips, na.rm = TRUE)) |>
+  arrange((most_trips)) |>
+  slice_head(n=1) # 2020-04-01
+
+
+# Task 5: Create a new table with annual total (sum) for UPT and VRM for 2022
+
+USAGE <- inner_join(TRIPS, MILES) |>
+  mutate(`NTD ID` = as.integer(`NTD ID`))
+
+
+USAGE <- USAGE |>
+  mutate(Mode=case_when(
+    Mode == "AR" ~ "Alaska Railroad",
+    Mode == "CB" ~ "Commuter Bus",
+    Mode == "CC" ~ "Cable Car",
+    Mode == "CR" ~ "Commuter Rail",
+    Mode == "DR" ~ "Demand Response",
+    Mode == "FB" ~ "Ferryboat",
+    Mode == "HR" ~ "Heavy Rail",
+    Mode == "IP" ~ "Inclined Plane",
+    Mode == "LR" ~ "Light Rail",
+    Mode == "MB" ~ "Bus",
+    Mode == "MG" ~ "Monorail and Automated Guideway modes",
+    Mode == "PB" ~ "Publico",
+    Mode == "RB" ~ "Bus Rapid Transit",
+    Mode == "SR" ~ "Streetcar Rail",
+    Mode == "TB" ~ "Trolleybus",
+    Mode == "TR" ~ "Aerial Tramways",
+    Mode == "VP" ~ "Vanpool",
+    Mode == "YR" ~ "Hybrid Rail",
+    TRUE ~ "Unknown"))
+
+
+USAGE_2022_ANNUAL <- USAGE |>
+  select(-`3 Mode`) |>
+  rename("metro_area" = "UZA Name") |>
+  filter(year(month)=='2022') |>
+  group_by(`NTD ID`, `Agency`,`metro_area`,`Mode`) |>
+  summarize(UPT = sum(UPT),
+            VRM = sum(VRM)) |>
+  ungroup()
+
+head(USAGE_2022_ANNUAL, n=2)
+
+FINANCIALS <- FINANCIALS |>
+  mutate(Mode=case_when(
+    Mode == "AR" ~ "Alaska Railroad",
+    Mode == "CB" ~ "Commuter Bus",
+    Mode == "CC" ~ "Cable Car",
+    Mode == "CR" ~ "Commuter Rail",
+    Mode == "DR" ~ "Demand Response",
+    Mode == "FB" ~ "Ferryboat",
+    Mode == "HR" ~ "Heavy Rail",
+    Mode == "IP" ~ "Inclined Plane",
+    Mode == "LR" ~ "Light Rail",
+    Mode == "MB" ~ "Bus",
+    Mode == "MG" ~ "Monorail and Automated Guideway modes",
+    Mode == "PB" ~ "Publico",
+    Mode == "RB" ~ "Bus Rapid Transit",
+    Mode == "SR" ~ "Streetcar Rail",
+    Mode == "TB" ~ "Trolleybus",
+    Mode == "TR" ~ "Aerial Tramways",
+    Mode == "VP" ~ "Vanpool",
+    Mode == "YR" ~ "Hybrid Rail",
+    TRUE ~ "Unknown"))
+
+
+USAGE_AND_FINANCIALS <- left_join(USAGE_2022_ANNUAL,
+                                  FINANCIALS,
+                                  join_by(`NTD ID`, `Mode`)) |>
+  drop_na()
+
+
+USAGE_AND_FINANCIALS
+
+# Task 6: Answer the following 6 questions using USAGE_AND_FINANCIALS
+
+# 6.1: Which transit system (agency and mode) had the most UPT in 2022?
+
+USAGE_AND_FINANCIALS |>
+  group_by(`Agency`, `Mode`) |>
+  summarize(Total_UPT = sum(UPT, na.rm=TRUE), .groups="drop") |>
+  arrange(desc(Total_UPT)) |>
+  slice_head(n=1) # MTA New York City Transit -- Heavy Rail
+
+
+# 6.2: Which transit system (agency and mode) had the highest farebox recovery,
+# defined as the highest ratio of Total Fares to Expenses?
+
+USAGE_AND_FINANCIALS |>
+  group_by(`Agency`,`Mode`) |>
+  summarize(fbx_rcv = sum(`Total Fares`, na.rm = TRUE) / sum(`Expenses`, na.rm = TRUE), .groups="drop") |>
+  arrange(desc(fbx_rcv)) |>
+  slice_head(n=1) # Transit Authority of Central Kentucky -- Vanpool
+
+# 6.3: Which transit system (agency and mode) had the lowest expenses per UPT?
+USAGE_AND_FINANCIALS |>
+  filter(UPT >= 1) |>
+  group_by(`Agency`,`Mode`) |>
+  summarize(lwst_exp_upt =  sum(`Expenses`, na.rm = TRUE) / sum(`UPT`, na.rm = TRUE), .groups="drop") |>
+  arrange(lwst_exp_upt) |>
+  slice_head(n=1) # North Caroline State University -- Bus
+  
+
+# 6.4: Which transit system (agency and mode) had the highest total fares per UPT?
+USAGE_AND_FINANCIALS |>
+  filter(`Total Fares` >= 1) |>
+  group_by(`Agency`,`Mode`) |>
+  summarize(hghst_fr_upt = sum(`UPT`, na.rm = TRUE) / sum(`Total Fares`, na.rm = TRUE), .groups="drop") |>
+  # summarize(hghst_fr_upt = sum(`UPT`, na.rm = TRUE) / sum(`Total Fares`, na.rm = TRUE), .groups="drop")  |>
+  arrange(desc(hghst_fr_upt)) |>
+  slice_head(n=1) # Athens-Clarke County Unified Government -- Bus
+    
+
+# 6.5: Which transit system (agency and mode) had the lowest expenses per VRM?
+USAGE_AND_FINANCIALS |>
+  filter(UPT >= 1) |>
+  group_by(`Agency`,`Mode`) |>
+  summarize(lwst_exp_vrm = sum(`Expenses`, na.rm = TRUE) / sum(`VRM`, na.rm = TRUE), .groups="drop") |>
+  arrange(lwst_exp_vrm) |>
+  slice_head(n=1) # New Mexico Department of Transportation -- Vanpool
+
+# 6.6: Which transit system (agency and mode) had the highest total fares per VRM?
+USAGE_AND_FINANCIALS |>
+  filter(`Total Fares` >= 1) |>
+  group_by(`Agency`,`Mode`) |>
+  summarize(hghst_fr_vrm = sum(`VRM`, na.rm = TRUE) / sum(`Total Fares`, na.rm = TRUE), .groups="drop") |>
+  arrange(desc(hghst_fr_vrm)) |>
+  slice_head(n=1) # Athens-Clarke County Unified Government -- Bus
