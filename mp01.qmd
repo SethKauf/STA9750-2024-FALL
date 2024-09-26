@@ -1,7 +1,6 @@
 ---
 title: Mini Project01
 format: html
-theme: solar
 css: styles.css
 ---
 
@@ -14,12 +13,11 @@ We will try to answer some questions about transit from that year in this file.
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 library(tidyverse)
-library(DT)
 library(dplyr)
 ```
 
 # Import Data
-```{r echo=TRUE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 # I had to rename several of the files on import,
 # When re-running my code, please be mindful of that
 FARES <- readxl::read_xlsx("2022_fare_revenue.xlsx") |>
@@ -77,14 +75,19 @@ MILES <- readxl::read_xlsx("ridership.xlsx", sheet="VRM") |>
 
 USAGE <- inner_join(TRIPS, MILES) |>
   mutate(`NTD ID` = as.integer(`NTD ID`))
+```
 
+
+```{r echo=TRUE, message=FALSE}
+if(!require("DT")) install.packages("DT")
+library(DT)
 sample_n(USAGE, 1000) |> 
   mutate(month=as.character(month)) |> 
   DT::datatable()
 ```
 
 ## Task 1: Rename column UZA Name to metro_area
-```{r message=TRUE}
+```{r echo=TRUE, message=FALSE}
 colnames(USAGE)
 
 USAGE <- USAGE |> rename("metro_area" = "UZA Name")
@@ -133,10 +136,9 @@ USAGE <- USAGE |>     rename( "unlinked_passenger_trips" = "UPT",
   select( -`NTD ID`,
           -`3 Mode`)
 
-
 sample_n(USAGE, 1000) |> 
-  mutate(month=as.character(month)) |>
-  DT::datatable()
+    mutate(month=as.character(month)) |> 
+    DT::datatable()
 ```
 
 ## Task 3: Answer specific questions
@@ -203,7 +205,7 @@ Answer: 180,458,819 trips
 
 ### 3.4: Which Mode of transport had the longest average trip in May 2024?
 
-``` {r echo=TRUE, message=TRUE}
+``` {r echo=TRUE, message=FALSE}
 USAGE |>
   filter(month == '2024-05-01') |>
   group_by(Mode) |>
