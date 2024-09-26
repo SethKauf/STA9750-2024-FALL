@@ -1,6 +1,7 @@
 ---
 title: "My first website!"
 format: html
+jyml:
 ---
 
 Hi all, my name is Seth, I'm in the MS Statistics program at Baruch.
@@ -20,6 +21,6 @@ My lukewarm take on modern data science, there's a lot of hype around AI and rig
   <figcaption>linked from GIPHY</figcaption>
 </figure>
 
-Feel free to direct message me on Piazza or GitHub if you want to connect, I'm also looking for groupmates.\n\n
+Feel free to direct message me on Piazza or GitHub if you want to connect.\n\n
 
 Looking forward to a great semester!
