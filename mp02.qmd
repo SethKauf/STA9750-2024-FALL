@@ -1,0 +1,8 @@
+---
+title: Mini Project 2
+format: html
+css: styles.css
+---
+
+# Introduction
+This project for STA 9750 has us giving a Movie Pitch
