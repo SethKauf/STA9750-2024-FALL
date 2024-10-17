@@ -14,8 +14,11 @@ website:
       - text: "Home"
         href: index.qmd
       - text: "Projects"
-        href: mp01.qmd
-        href: mp02.qmd
+        menu:
+        - text: "Mini Project 1: Transit"
+          href: mp01.qmd
+        - text: "Mini Project 2: Movies"
+          href: mp02.qmd
     
 format:
   html:
