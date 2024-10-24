@@ -51,7 +51,7 @@ After sorting through IMDb data, these three just truly spoke to us and we knew 
 
 Since we're doing this in `R`, let's get some code going
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 
 # Install and import packages
 if(!require("ggplot2")) install.packages("ggplot2")
@@ -76,7 +76,7 @@ library(readr)
 Next let's import our data
 
 
-```{r load_large_data, echo = FALSE}
+```{r load_large_data, echo = TRUE, message = FALSE, warning = FALSE}
 get_imdb_file <- function(fname){
   BASE_URL <- "https://datasets.imdbws.com/"
   fname_ext <- paste0(fname, ".tsv.gz")
@@ -105,7 +105,7 @@ NAME_BASICS <- NAME_BASICS |>
 ```
 
 Looking at the data we just pulled
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 TITLE_RATINGS |>
   ggplot(aes(x=numVotes)) + 
   geom_histogram(bins=30) +
@@ -117,7 +117,7 @@ TITLE_RATINGS |>
   scale_y_continuous(label=scales::comma)
 ```
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 TITLE_RATINGS |>
   pull(numVotes) |>
   quantile()
@@ -161,7 +161,7 @@ We have several tasks to complete with this data, including some EDA!
 
 # Task 1: Clean Clean Clean
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 convert_columns <- function(data, columns, conversion = "numeric") {
   
   # Check if conversion is valid
@@ -189,8 +189,7 @@ TITLE_EPISODES <- convert_columns(TITLE_EPISODES, columns=c("seasonNumber","epis
 # Task 2: Provided Questions, Provided Answers
 
 Here we seek to answer several questions from the dataset.
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 #2.1: How many movies are in our data set? How many TV series? How many TV episodes?
 
 # TITLE_BASICS will have this answer
@@ -224,7 +223,7 @@ TV_EPISODE_COUNT <- TITLE_BASICS |>
 sprintf("There are %s TV Episodes in the data",format(TV_EPISODE_COUNT,big.mark=",", scientific=FALSE))
 ```
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 #2.2: Oldest living person in data
 glimpse(NAME_BASICS)
 
@@ -252,10 +251,10 @@ TITLES_AND_NAMES <- NAME_BASICS |>
   unique() |>
   slice_head(n = 5)
 
-TITLES_AND_NAMES # Because there are too many NULL deathYear values, this question can't really be answered
+head(TITLES_AND_NAMES) # Because there are too many NULL deathYear values, this question can't really be answered
 ```
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 #2.3: There is one TV Episode in this data set with a perfect 10/10 rating and at least 200,00 IMDb ratings. What is it? Which series does it belong to?
 glimpse(TITLE_RATINGS)
 glimpse(TITLE_BASICS)
@@ -277,7 +276,7 @@ HIGHEST_RATED <- TITLE_RATINGS |>
     `numVotes`
   )
 
-HIGHEST_RATED # Unsurprisingly, it's a season 5 episode of Breaking Bad, specifically, the one where Hank gets got
+head(HIGHEST_RATED) # Unsurprisingly, it's a season 5 episode of Breaking Bad, specifically, the one where Hank gets got
 ```
 
 If anyone's interested in a famous scene (and subsequent meme) from this episode (Warning: violence and spoilers)
@@ -287,7 +286,7 @@ If anyone's interested in a famous scene (and subsequent meme) from this episode
 </a>
 
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 #2.4: Which 4 projects is actor Mark Hamill most known for?
 
 # Just guessing beforehand: Star War IV, V, VI, and VA for the Joker in the Batman animated series
@@ -308,7 +307,7 @@ MARK_HAMILL <- NAME_BASICS |>
          `primaryName`,
          `primaryTitle`)
 
-MARK_HAMILL
+print(MARK_HAMILL)
 ```
 
 Apparently, Star Wars Episode VIII gets a listing before his Joker VA. Hard disagree, but I digress.
@@ -318,7 +317,7 @@ Apparently, Star Wars Episode VIII gets a listing before his Joker VA. Hard disa
 </a>
 
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 #2.5: What TV series, with more than 12 episodes, has the highest average rating?
 glimpse(TITLE_EPISODES)
 glimpse(TITLE_BASICS)
@@ -355,7 +354,7 @@ TWELVE_EP_SERIES <- TITLE_EPISODES |>
 TWELVE_EP_SERIES # I have no clue what any of these shows are
 ```
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 #2.6: The TV Series Happy Days (1974-1984) gives us the common idiom "jump the shark". The phrase comes from
 # a controversial fifth season episode (aired in 1977) in which a lead character literally jumped over a shark on
 # water skis. Idiomatically, it is used to refer to the moment when a once-great show becomes ridiculous and
@@ -452,7 +451,7 @@ Other features of note could be
   * Crew Size
   * Run Time
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 # First let's just get only movie data from 1960 onwards
 MOVIES <- TITLE_BASICS |>
   filter(titleType == "movie",startYear >= 1960)
@@ -542,7 +541,7 @@ Metrics for flop:
   * Low number of votes (<= 500)
   * Runtime greater than 200 minutes
   
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 # Define the metric for success function
 metric_for_success <- function(df) {
   df <- df |>
@@ -578,7 +577,7 @@ MOVIES <- metric_for_success(MOVIES)
 table(MOVIES$metric)
 ```
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 
 #3.1: Chooose the top 5-10 movies by my metric to confirm successes
 MOVIES |>
@@ -590,7 +589,7 @@ MOVIES |>
   arrange(desc(metric),desc(numVotes))
 ```
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 
 #3.2: Choose 3-5  movies with large numbers of IMDb votes that socre poorly on your success metric and confirm
 # that they are indeed low quality
@@ -607,7 +606,7 @@ MOVIES |>
 
 I didn't need a personal metric to tell me that these 5 movies suck
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 
 #3.3 Choose a prestige actor or director and confirm that they have many projects with high scores on your success metric.
 NAME_BASICS |>
@@ -626,7 +625,7 @@ NAME_BASICS |>
 ```
 Pretty good
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 
 #3.4 Perform at least one other "spot check" validation
 
@@ -645,7 +644,7 @@ counts
 
 Although the metric is imperfect, it is pretty good at telling us what's good and what's not (based on average ratings)
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 #3.5: Come up with a numerical threshold for a project to be a ‘success’; that is, determine a value such that movies above `v` are all “solid” or better.
 
 v <- 0.6
@@ -653,8 +652,7 @@ v <- 0.6
 
 # Task 4: What makes a good movie?
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 # Juuuust incase
 avgrtgthrsh <- 6.0
 
@@ -779,8 +777,7 @@ p4 <- ggplot(success_by_genre_metric_less, aes(x = decade, y = success_rate, col
 p4_interactive <- ggplotly(p4)
 ```
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 p1_interactive
 p2_interactive
 p3_interactive
@@ -789,8 +786,7 @@ p4_interactive
 
 They're interactive!
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 #4.1: Which genre has the most "successs" in each decade"?
 
 
@@ -825,8 +821,7 @@ most_successful_genre_metric
 Drama and Action films are pretty succesfull!
 
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 #4.2 Which genre consistently has the most "successes"? Which genre used to reliably produce "successes" and has fallen out of favor?
 p1_interactive
 p2_interactive
@@ -837,8 +832,7 @@ Documentaries have the most consistent successes.
 Horror used to produce a lot of successes but has been on a downward trend each decade.
 
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 #4.3: What genre has produced the most “successes” since 2010?
 #Does it have the highest success rate or does it only have a large number of successes because there are many productions in that genre?
 p1_interactive
@@ -849,8 +843,7 @@ most_successful_genre_metric
 
 Drama seems to be the answer to both of these
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 #4.4: What genre has become more popular in recent years?
 
 p3_interactive
@@ -866,10 +859,7 @@ Hang on to your hats because there's about to be a lot of data manipulation.
 
 Basically, we're going to whittle down the list of actors and directors until we find a group that matches what we're looking for in producing the next box-office smash hit.
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
-# 
-
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 #Filter TITLE_BASICS based on metric threshold and genre
 FILTERED_MOVIES <- MOVIES |>
   separate_longer_delim(genres, delim = ",") |>
@@ -1021,8 +1011,7 @@ NON_ACTOR_DIRECTORS <- BEST_FILMS_DIRECTORS |>
 CURRENT_BEST_DIRECTORS <- NON_ACTOR_DIRECTORS |>
   filter(decade==2020)
 ```
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 dim(NON_ACTOR_DIRECTORS)
 dim(BEST_FILMS_ACTORS)
 
@@ -1030,8 +1019,7 @@ dim(BEST_FILMS_ACTORS)
 
 Taking a quick breather! We just got out data down quite a bit. Let's keep going.
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 MOST_POPULAR_ACTORS <- CURRENT_BEST_ACTORS |>
   left_join(FILTERED_MOVIES, by = c("tconst" = "tconst")) |>
   select(
@@ -1158,8 +1146,7 @@ MOST_POPULAR_DIRECTORS <- MOST_POPULAR_DIRECTORS |>
     avgDirectorRating = `avg_rating`
   )
 ```
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 # Results!
 head(MOST_POPULAR_ACTORS)
 dim(MOST_POPULAR_ACTORS)
@@ -1167,8 +1154,7 @@ head(MOST_POPULAR_DIRECTORS)
 dim(MOST_POPULAR_DIRECTORS)
 ```
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 # Identify the directors with the highest values for numVotes, filmcount, and avgDirectorRating
 highest_votes <- MOST_POPULAR_DIRECTORS |> filter(numVotes == max(numVotes, na.rm = TRUE))
 highest_film_count <- MOST_POPULAR_DIRECTORS |> filter(filmCount == max(filmCount, na.rm = TRUE))
@@ -1207,14 +1193,12 @@ ggplot(MOST_POPULAR_DIRECTORS, aes(x = filmCount, y = numVotes, color = avgDirec
     axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate x-axis labels if needed
   )
 ```
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 MOST_POPULAR_DIRECTORS
 # Rian Johnson
 ```
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 MOST_POPULAR_ACTORS |>
   filter(filmCount >= 10, mainGenre == "Action") |>
   arrange(desc(avgActorRating)) |>
