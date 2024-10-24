@@ -13,7 +13,7 @@ For STA 9750 Mini Project 2, I'm going to propose remaking a classic movie: Inde
   <figcaption>Watch out, Earth!</figcaption>
 </figure>
 
-# Pitch
+# Task 7: Pitch
 Originally released in 1996 and starring Will Smith, this film depicts Earth's fight for freedom from an alien invasion.
 
 Starring Jacob Batalon in his breakout role as Captain Steven Hiller and famous robo-freedom-fighter John DiMaggio as David Levinson, this film follows an ensemble of characters as they look to save Earth from the new threat from the aliens of Omicron Persei 10.
@@ -1203,13 +1203,18 @@ MOST_POPULAR_ACTORS |>
 # Jacob Batalon and John DiMaggio
 MOST_POPULAR_ACTORS |>
   filter(primaryName %in% c("Jacob Batalon","John DiMaggio"))
-
+```
+# Task 6: Remaking a classic
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 FILTERED_MOVIES |>
   filter(year <= 1998, grepl("action",genres,ignore.case=TRUE)) |>
   arrange(desc(numVotes)) |>
   unique() |>
   print(n=30)
-# Independence Day
+# Independence Day seems like a good choice, let's make sure there's only one of it though
+
+FILTERED_MOVIES |>
+  filter(title == "Independence Day")
 ```
 
-So, we get to the end of the data exploration. Lots of combining, filtering, and more. But we think these three will create quite the film!
+Looks like we're good to go with this remake using this cast and crew!
