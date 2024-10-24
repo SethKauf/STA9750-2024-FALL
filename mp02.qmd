@@ -52,17 +52,19 @@ After sorting through IMDb data, these three just truly spoke to us and we knew 
 Since we're doing this in `R`, let's get some code going
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-
 # Install and import packages
-if(!require("ggplot2")) install.packages("ggplot2")
-if(!require("tidyverse")) install.packages("tidyverse")
-if(!require("dplyr")) install.packages("dplyr")
-if(!require("glue")) install.packages("glue")
-if(!require("scales")) install.packages("scales")
-if(!require("psych")) install.packages("psych")
-if(!require("plotly")) install.packages("plotly")
-if(!require("readr")) install.packages("readr")
+if (!require("ggplot2")) install.packages("ggplot2")
+if (!require("tidyverse")) install.packages("tidyverse")
+if (!require("dplyr")) install.packages("dplyr")
+if (!require("glue")) install.packages("glue")
+if (!require("scales")) install.packages("scales")
+if (!require("psych")) install.packages("psych")
+if (!require("plotly")) install.packages("plotly")
+if (!require("readr")) install.packages("readr")
+if (!require("DT")) install.packages("DT")
+if (!require("ggrepel")) install.packages("ggrepel")
 
+library(DT)
 library(ggplot2)
 library(tidyverse)
 library(dplyr)
@@ -71,32 +73,34 @@ library(scales)
 library(psych)
 library(plotly)
 library(readr)
+library(ggrepel)
 ```
 
 Next let's import our data
 
 
 ```{r load_large_data, echo = TRUE, message = FALSE, warning = FALSE}
-get_imdb_file <- function(fname){
+get_imdb_file <- function(fname) {
   BASE_URL <- "https://datasets.imdbws.com/"
   fname_ext <- paste0(fname, ".tsv.gz")
-  if(!file.exists(fname_ext)){
+  if (!file.exists(fname_ext)) {
     FILE_URL <- paste0(BASE_URL, fname_ext)
-    download.file(FILE_URL, 
-                  destfile = fname_ext)
+    download.file(FILE_URL,
+      destfile = fname_ext
+    )
   }
-  as.data.frame(readr::read_tsv(fname_ext, lazy=FALSE))
+  as.data.frame(readr::read_tsv(fname_ext, lazy = FALSE))
 }
 
-NAME_BASICS      <- get_imdb_file("name.basics")
+NAME_BASICS <- get_imdb_file("name.basics")
 
-TITLE_BASICS     <- get_imdb_file("title.basics")
+TITLE_BASICS <- get_imdb_file("title.basics")
 
-TITLE_EPISODES   <- get_imdb_file("title.episode")
+TITLE_EPISODES <- get_imdb_file("title.episode")
 
-TITLE_RATINGS    <- get_imdb_file("title.ratings")
+TITLE_RATINGS <- get_imdb_file("title.ratings")
 
-TITLE_CREW       <- get_imdb_file("title.crew")
+TITLE_CREW <- get_imdb_file("title.crew")
 
 TITLE_PRINCIPALS <- get_imdb_file("title.principals")
 
@@ -107,14 +111,14 @@ NAME_BASICS <- NAME_BASICS |>
 Looking at the data we just pulled
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 TITLE_RATINGS |>
-  ggplot(aes(x=numVotes)) + 
-  geom_histogram(bins=30) +
-  xlab("Number of IMDB Ratings") + 
-  ylab("Number of Titles") + 
-  ggtitle("Majority of IMDB Titles Have Less than 100 Ratings") + 
-  theme_bw() + 
-  scale_x_log10(label=scales::comma) + 
-  scale_y_continuous(label=scales::comma)
+  ggplot(aes(x = numVotes)) +
+  geom_histogram(bins = 30) +
+  xlab("Number of IMDB Ratings") +
+  ylab("Number of Titles") +
+  ggtitle("Majority of IMDB Titles Have Less than 100 Ratings") +
+  theme_bw() +
+  scale_x_log10(label = scales::comma) +
+  scale_y_continuous(label = scales::comma)
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
@@ -126,22 +130,32 @@ TITLE_RATINGS <- TITLE_RATINGS |>
   filter(numVotes >= 100)
 
 TITLE_BASICS <- TITLE_BASICS |>
-  semi_join(TITLE_RATINGS, 
-            join_by(tconst == tconst))
+  semi_join(
+    TITLE_RATINGS,
+    join_by(tconst == tconst)
+  )
 
 TITLE_CREW <- TITLE_CREW |>
-  semi_join(TITLE_RATINGS, 
-            join_by(tconst == tconst))
+  semi_join(
+    TITLE_RATINGS,
+    join_by(tconst == tconst)
+  )
 
 TITLE_EPISODES_1 <- TITLE_EPISODES |>
-  semi_join(TITLE_RATINGS, 
-            join_by(tconst == tconst))
+  semi_join(
+    TITLE_RATINGS,
+    join_by(tconst == tconst)
+  )
 TITLE_EPISODES_2 <- TITLE_EPISODES |>
-  semi_join(TITLE_RATINGS, 
-            join_by(parentTconst == tconst))
+  semi_join(
+    TITLE_RATINGS,
+    join_by(parentTconst == tconst)
+  )
 
-TITLE_EPISODES <- bind_rows(TITLE_EPISODES_1,
-                            TITLE_EPISODES_2) |>
+TITLE_EPISODES <- bind_rows(
+  TITLE_EPISODES_1,
+  TITLE_EPISODES_2
+) |>
   distinct()
 
 TITLE_PRINCIPALS <- TITLE_PRINCIPALS |>
@@ -151,10 +165,12 @@ TITLE_PRINCIPALS <- TITLE_PRINCIPALS |>
 rm(TITLE_EPISODES_1)
 rm(TITLE_EPISODES_2)
 
-#EDA
+# EDA
 NAME_BASICS <- NAME_BASICS |>
-  mutate(birthYear = as.numeric(birthYear),
-         deathYear = as.numeric(deathYear))
+  mutate(
+    birthYear = as.numeric(birthYear),
+    deathYear = as.numeric(deathYear)
+  )
 ```
 
 We have several tasks to complete with this data, including some EDA!
@@ -163,48 +179,49 @@ We have several tasks to complete with this data, including some EDA!
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 convert_columns <- function(data, columns, conversion = "numeric") {
-  
   # Check if conversion is valid
-  
-  if(!conversion %in% c("numeric", "logical")) {
+
+  if (!conversion %in% c("numeric", "logical")) {
     stop("Invalid conversion type. Choose either 'numeric' or 'logical'.")
   }
-  
+
   # Apply the conversion based on argument
   if (conversion == "numeric") {
     data <- data |>
       mutate(across(all_of(columns), as.numeric))
   } else if (conversion == "logical") {
-   data <- data |>
-     mutate(across(all_of(columns), as.logical))
+    data <- data |>
+      mutate(across(all_of(columns), as.logical))
   }
-  
+
   return(data)
 }
 
-TITLE_BASICS <- convert_columns(TITLE_BASICS, columns = c("startYear","endYear","runtimeMinutes"), conversion="numeric")
+TITLE_BASICS <- convert_columns(TITLE_BASICS, columns = c("startYear", "endYear", "runtimeMinutes"), conversion = "numeric")
 
-TITLE_EPISODES <- convert_columns(TITLE_EPISODES, columns=c("seasonNumber","episodeNumber"), conversion="numeric")
+TITLE_EPISODES <- convert_columns(TITLE_EPISODES, columns = c("seasonNumber", "episodeNumber"), conversion = "numeric")
 ```
 # Task 2: Provided Questions, Provided Answers
 
 Here we seek to answer several questions from the dataset.
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#2.1: How many movies are in our data set? How many TV series? How many TV episodes?
+# 2.1: How many movies are in our data set? How many TV series? How many TV episodes?
 
 # TITLE_BASICS will have this answer
 glimpse(TITLE_BASICS)
 
-table(TITLE_BASICS$titleType)
 # movie, tvEpisode and tvSeries
+table(TITLE_BASICS$titleType)
+```
 
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 MOVIE_COUNT <- TITLE_BASICS |>
   filter(`titleType` == "movie") |>
   select(`tconst`) |>
   unique() |>
   count()
 
-sprintf("There are %s movies in the data",format(MOVIE_COUNT,big.mark=",", scientific=FALSE))
+sprintf("There are %s movies in the data", format(MOVIE_COUNT, big.mark = ",", scientific = FALSE))
 
 TV_SERIES_COUNT <- TITLE_BASICS |>
   filter(`titleType` == "tvSeries") |>
@@ -212,7 +229,7 @@ TV_SERIES_COUNT <- TITLE_BASICS |>
   unique() |>
   count()
 
-sprintf("There are %s TV Series in the data",format(TV_SERIES_COUNT,big.mark=",", scientific=FALSE))
+sprintf("There are %s TV Series in the data", format(TV_SERIES_COUNT, big.mark = ",", scientific = FALSE))
 
 TV_EPISODE_COUNT <- TITLE_BASICS |>
   filter(`titleType` == "tvEpisode") |>
@@ -220,42 +237,47 @@ TV_EPISODE_COUNT <- TITLE_BASICS |>
   unique() |>
   count()
 
-sprintf("There are %s TV Episodes in the data",format(TV_EPISODE_COUNT,big.mark=",", scientific=FALSE))
+sprintf("There are %s TV Episodes in the data", format(TV_EPISODE_COUNT, big.mark = ",", scientific = FALSE))
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#2.2: Oldest living person in data
+# 2.2: Oldest living person in data
 glimpse(NAME_BASICS)
 
 OLDEST <- NAME_BASICS |>
   filter(is.na(`deathYear`)) |>
   arrange(`birthYear`) |>
-  select(`primaryName`,`birthYear`,`deathYear`) |>
-  slice_head(n=10)
+  select(`primaryName`, `birthYear`, `deathYear`) |>
+  slice_head(n = 10)
 
-OLDEST
-# Clearly this isn't the way to go about this
-
+OLDEST |>
+  DT::datatable()
+```
+Clearly this isn't the way to go about this
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 glimpse(TITLE_BASICS)
 glimpse(NAME_BASICS)
 
-NAME_BASICS |> separate_longer_delim(knownForTitles, ",") |>
-  slice_head(n=5)
+NAME_BASICS |>
+  separate_longer_delim(knownForTitles, ",") |>
+  DT::datatable()
 
 TITLES_AND_NAMES <- NAME_BASICS |>
   separate_longer_delim(knownForTitles, delim = ",") |>
   inner_join(TITLE_BASICS, by = c("knownForTitles" = "tconst")) |>
-  filter(is.na(deathYear),birthYear >= 1908) |> #according to google, the current oldest person alive was born in 1908
+  filter(is.na(deathYear), birthYear >= 1908) |> # according to google, the current oldest person alive was born in 1908
   arrange(birthYear) |>
   select(primaryName, birthYear, deathYear) |>
   unique() |>
   slice_head(n = 5)
 
-head(TITLES_AND_NAMES) # Because there are too many NULL deathYear values, this question can't really be answered
+TITLES_AND_NAMES |>
+  DT::datatable()
+# Because there are too many NULL deathYear values, this question can't really be answered
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#2.3: There is one TV Episode in this data set with a perfect 10/10 rating and at least 200,00 IMDb ratings. What is it? Which series does it belong to?
+# 2.3: There is one TV Episode in this data set with a perfect 10/10 rating and at least 200,00 IMDb ratings. What is it? Which series does it belong to?
 glimpse(TITLE_RATINGS)
 
 HIGHEST_RATED <- TITLE_RATINGS |>
@@ -275,20 +297,25 @@ HIGHEST_RATED <- TITLE_RATINGS |>
     `numVotes`
   )
 
-head(HIGHEST_RATED) # Unsurprisingly, it's a season 5 episode of Breaking Bad, specifically, the one where Hank gets got
+head(HIGHEST_RATED) |>
+  DT::datatable()
 ```
+Unsurprisingly, it's a season 5 episode of Breaking Bad, specifically, the one where Hank gets got
 
-If anyone's interested in a famous scene (and subsequent meme) from this episode (Warning: violence and spoilers)
+If anyone's interested in a famous scene (and meme) from this episode (Warning: violence and spoilers)
 
 <div style="text-align: center;">
-  <a href="https://www.youtube.com/watch?v=YCrngJCkI8I" target="_blank">
-    <img src="https://img.youtube.com/vi/YCrngJCkI8I/hqdefault.jpg" alt="Video Preview" style="width: 500px; height: auto;">
-  </a>
+  <figure>
+    <a href="https://www.youtube.com/watch?v=YCrngJCkI8I" target="_blank">
+      <img src="https://img.youtube.com/vi/YCrngJCkI8I/hqdefault.jpg" alt="Video Preview" style="width: 500px; height: auto;">
+    </a>
+    <figcaption>SPOILERS!!</figcaption>
+  </figure>
 </div>
 
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#2.4: Which 4 projects is actor Mark Hamill most known for?
+# 2.4: Which 4 projects is actor Mark Hamill most known for?
 
 # Just guessing beforehand: Star War IV, V, VI, and VA for the Joker in the Batman animated series
 
@@ -301,24 +328,29 @@ MARK_HAMILL <- NAME_BASICS |>
   filter(nconst == "nm0000434") |>
   separate_longer_delim(knownForTitles, delim = ",") |>
   inner_join(TITLE_BASICS, by = c("knownForTitles" = "tconst")) |>
-  select(actorID = `nconst`,
-         `primaryName`,
-         `primaryTitle`)
+  select(
+    actorID = `nconst`,
+    `primaryName`,
+    `primaryTitle`
+  )
 
-print(MARK_HAMILL)
+MARK_HAMILL |>
+  DT::datatable()
 ```
 
 Apparently, Star Wars Episode VIII gets a listing before his Joker VA. Hard disagree, but I digress.
 
 <div style="text-align: center;">
-  <a href="https://www.youtube.com/watch?v=_gBWpWwIBKw" target="_blank">
-    <img src="https://img.youtube.com/vi/_gBWpWwIBKw/hqdefault.jpg" alt="Video Preview" style="width: 500px; height: auto;">
-  </a>
+  <figure>
+    <a href="https://www.youtube.com/watch?v=_gBWpWwIBKw" target="_blank">
+      <img src="https://img.youtube.com/vi/_gBWpWwIBKw/hqdefault.jpg" alt="Video Preview" style="width: 500px; height: auto;">
+    </a>
+    <figcaption>Mark Hamill's Joker is iconic!</figcaption>
+  </figure>
 </div>
 
-
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#2.5: What TV series, with more than 12 episodes, has the highest average rating?
+# 2.5: What TV series, with more than 12 episodes, has the highest average rating?
 glimpse(TITLE_EPISODES)
 glimpse(TITLE_BASICS)
 glimpse(TITLE_RATINGS)
@@ -327,8 +359,8 @@ TWELVE_EP_SERIES <- TITLE_EPISODES |>
   group_by(parentTconst) |>
   summarize(episodeCount = n()) |>
   filter(episodeCount >= 12) |>
-  inner_join(TITLE_RATINGS,c("parentTconst" = "tconst")) |>
-  left_join(TITLE_BASICS,c("parentTconst" = "tconst")) |>
+  inner_join(TITLE_RATINGS, c("parentTconst" = "tconst")) |>
+  left_join(TITLE_BASICS, c("parentTconst" = "tconst")) |>
   select(
     seriesID = `parentTconst`,
     `primaryTitle`,
@@ -339,14 +371,15 @@ TWELVE_EP_SERIES <- TITLE_EPISODES |>
     `numVotes`
   ) |>
   arrange(desc(averageRating), desc(episodeCount), desc(numVotes)) |>
-  slice_head(n=5)
+  slice_head(n = 5)
 
 
-TWELVE_EP_SERIES
+TWELVE_EP_SERIES |>
+  DT::datatable()
 ```
-No clue what these shows are
+No clue what these shows are, but here they are.
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#2.6: The TV Series Happy Days (1974-1984) gives us the common idiom "jump the shark". The phrase comes from
+# 2.6: The TV Series Happy Days (1974-1984) gives us the common idiom "jump the shark". The phrase comes from
 # a controversial fifth season episode (aired in 1977) in which a lead character literally jumped over a shark on
 # water skis. Idiomatically, it is used to refer to the moment when a once-great show becomes ridiculous and
 # rapidly loses quality. Is it true that episodes from later seasons of Happy Days have lower
@@ -354,76 +387,79 @@ No clue what these shows are
 
 # First find the ID for Happy Days
 
-TITLE_BASICS |> filter(primaryTitle == "Happy Days",startYear==1974,endYear==1984) |> select(`tconst`,`titleType`,`primaryTitle`)
+TITLE_BASICS |>
+  filter(primaryTitle == "Happy Days", startYear == 1974, endYear == 1984) |>
+  select(`tconst`, `titleType`, `primaryTitle`)
 
 glimpse(TITLE_EPISODES)
 
 HAPPY_DAYS <- TITLE_EPISODES |>
-  filter(parentTconst=="tt0070992") |>
-  left_join(TITLE_RATINGS,c("tconst" = "tconst")) |>
+  filter(parentTconst == "tt0070992") |>
+  left_join(TITLE_RATINGS, c("tconst" = "tconst")) |>
   select(
     -`numVotes`,
     -`parentTconst`,
     -`tconst`
-    ) |>
+  ) |>
   group_by(seasonNumber) |>
-  summarize(avgRating = mean(averageRating,na.rm = TRUE))
+  summarize(avgRating = mean(averageRating, na.rm = TRUE))
 
-HAPPY_DAYS
+HAPPY_DAYS |>
+  DT::datatable()
 
 min_point <- HAPPY_DAYS[which.min(HAPPY_DAYS$avgRating), ]
 max_point <- HAPPY_DAYS[which.max(HAPPY_DAYS$avgRating), ]
 sharkjump <- HAPPY_DAYS[HAPPY_DAYS$seasonNumber == 5, ]
 
 highlighted_points <- factor(c("Lowest Rating", "Highest Rating", "Jumped Shark"),
-                             levels = c("Lowest Rating", "Highest Rating", "Jumped Shark"))  # Set the order here
+  levels = c("Lowest Rating", "Highest Rating", "Jumped Shark")
+) # Set the order here
 
 
 # Plot ratings over time
-ggplot(HAPPY_DAYS, aes(x = seasonNumber, y = avgRating)) + 
-  geom_line(size=1) +
-  geom_point(color = "#D35400",size=2) +
-  
+ggplot(HAPPY_DAYS, aes(x = seasonNumber, y = avgRating)) +
+  geom_line(size = 1) +
+  geom_point(color = "#D35400", size = 2) +
+
   # Add custom points for min, max, and season 5
   geom_point(data = min_point, aes(color = highlighted_points[1]), size = 3) +
   geom_point(data = max_point, aes(color = highlighted_points[2]), size = 3) +
   geom_point(data = sharkjump, aes(color = highlighted_points[3]), size = 3) +
-  
+
   # Add labels and formatting
   labs(title = "Happy Days Average Rating by Season", x = "Season", y = "Average Rating") +
-  
+
   # Customize ticks for x and y axes
   scale_x_continuous(breaks = seq(min(HAPPY_DAYS$seasonNumber), max(HAPPY_DAYS$seasonNumber), by = 1)) +
   scale_y_continuous(labels = label_number(), breaks = seq(floor(min(HAPPY_DAYS$avgRating)), ceiling(max(HAPPY_DAYS$avgRating)), by = 0.5)) +
-  
+
   # Manually define colors for the highlighted points
   scale_color_manual(
     values = c("Lowest Rating" = "blue", "Highest Rating" = "red", "Jumped Shark" = "green"),
     name = ""
   ) +
-  
   theme_minimal() +
   theme(
-    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"), 
-    axis.title.x = element_text(size = 14),  
-    axis.title.y = element_text(size = 14),  
-    axis.text = element_text(size = 12),  
-    # panel.grid.minor = element_blank(),  
-    legend.position = "right",  # Position the legend on the right
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    axis.title.x = element_text(size = 14),
+    axis.title.y = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    # panel.grid.minor = element_blank(),
+    legend.position = "right", # Position the legend on the right
     legend.text = element_text(face = "bold", size = 8),
-    
+
     # Set the background colors
-    panel.background = element_rect(fill = "gray90"),  # Gray background for the plot area
-    plot.background = element_rect(fill = "gray90"),  # Gray background for the entire plot
-    
+    panel.background = element_rect(fill = "gray90"), # Gray background for the plot area
+    plot.background = element_rect(fill = "gray90"), # Gray background for the entire plot
+
     # Enhance axis lines
-    axis.line = element_line(color = "black", size = 1.2),  # Change color and thickness of axis lines
-    axis.ticks = element_line(color = "black", size = 1),  # Change color and thickness of tick marks
-    axis.ticks.length = unit(0.25, "cm"),  # Adjust length of tick marks
-    
+    axis.line = element_line(color = "black", size = 1.2), # Change color and thickness of axis lines
+    axis.ticks = element_line(color = "black", size = 1), # Change color and thickness of tick marks
+    axis.ticks.length = unit(0.25, "cm"), # Adjust length of tick marks
+
     # Enhance gridlines
-    panel.grid.major = element_line(color = "gray60", size = 0.5),  # Change color and thickness of major gridlines
-    panel.grid.minor = element_line(color = "gray60", size = 0.5)   # Change color and thickness of minor gridlines
+    panel.grid.major = element_line(color = "gray60", size = 0.5), # Change color and thickness of major gridlines
+    panel.grid.minor = element_line(color = "gray60", size = 0.5) # Change color and thickness of minor gridlines
   )
 ```
 As we can see, the shark-jump likely caused an immediate dip in viewership, but it rebounded for the final 3 seasons and went out near the height of its popularity
@@ -443,7 +479,7 @@ Other features of note could be
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 # First let's just get only movie data from 1960 onwards
 MOVIES <- TITLE_BASICS |>
-  filter(titleType == "movie",startYear >= 1960)
+  filter(titleType == "movie", startYear >= 1960)
 
 # Add in ratings
 MOVIES <- MOVIES |>
@@ -469,9 +505,9 @@ MOVIES <- MOVIES |>
 
 # Count the number of genres in the 'genres' column
 GENRE_COUNT <- MOVIES |>
-  separate_longer_delim(genres, delim = ",") |>  # Split into multiple rows by delimiter
-  group_by(tconst) |>                               # Group by title to keep track of original rows
-  summarise(genre_count = n(), .groups = 'drop')  # Count the number of genres
+  separate_longer_delim(genres, delim = ",") |> # Split into multiple rows by delimiter
+  group_by(tconst) |> # Group by title to keep track of original rows
+  summarise(genre_count = n(), .groups = "drop") # Count the number of genres
 
 
 # Join back to the original MOVIES dataframe if needed
@@ -482,8 +518,8 @@ MOVIES <- MOVIES |>
 describe(MOVIES)
 
 # 90% of movies fall between an average rating of 3.4 and 7.7
-quantile(MOVIES$averageRating,.05)
-quantile(MOVIES$averageRating,.95)
+quantile(MOVIES$averageRating, .05)
+quantile(MOVIES$averageRating, .95)
 
 # We can use this to determine both what makes a great move and what makes a flop
 
@@ -495,11 +531,11 @@ SUCCESSES <- MOVIES |>
 
 describe(FLOPS)
 describe(SUCCESSES)
+```
 
-# Successes seem to be longer on average but also confined to a range of 1,440 minutes runtime while flops get a little silly
-# A lot more people vote for successes (surprising because you'd think people are more likely to respond if they dislike something than if they like it)
-# https://www.nationalstrategic.com/why-would-they-write-that-the-psychology-of-customer-reviews/
+Successes seem to be longer on average but also confined to a range of 1,440 minutes runtime while flops get a little silly. A lot more people vote for successes (surprising because you'd think people are <a href="https://www.nationalstrategic.com/why-would-they-write-that-the-psychology-of-customer-reviews/" target="_blank">more likely to respond if they dislike something</a> than if they like it.
 
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 # The number of genres used seem to not matter pretty much at all
 
 Mode <- function(x) {
@@ -510,25 +546,26 @@ Mode <- function(x) {
 Mode(SUCCESSES$genres)
 Mode(FLOPS$genres)
 
-head(sort(desc(table(SUCCESSES$genres))),n=20)
-head(sort(desc(table(FLOPS$genres))),n=20)
+head(sort(desc(table(SUCCESSES$genres))), n = 20)
+head(sort(desc(table(FLOPS$genres))), n = 20)
 
 table(SUCCESSES$isAdult)
 table(FLOPS$isAdult)
-# no effect
+# This feature doesn't seem to matter, we could probably even drop it
 ```
 
-Documentaries and Dramas are successfull while Horror is not. Comedy can go either way.
+Documentaries and Dramas are successful while Horror is not. Comedy can go either way.
 
 
-Metrics for success:
+**Metrics for success:**
   * Good genre (Drama, Documentary)
   * High number of votes (> 500)
-  * Runtime between 70 minutes and 150 minutes. Dock points for each STD outside of that
-Metrics for flop:
+  * Runtime between 70 minutes and 150 minutes. Dock points for each STD outside of that.
+
+**Metrics for flop:**
   * Bad genre (Horror, Comedy)
   * Low number of votes (<= 500)
-  * Runtime greater than 200 minutes
+  * Runtime greater than 200 minutes.
   
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 # Define the metric for success function
@@ -539,38 +576,37 @@ metric_for_success <- function(df) {
       positive_metric = ifelse(str_detect(genres, "Drama|Documentary"), 0.2, 0) +
         ifelse(numVotes >= 500, 0.4, 0) +
         ifelse(runtimeMinutes >= 70 & runtimeMinutes <= 150, 0.4, 0),
-      
+
       # Calculate negative contributions
       negative_metric = ifelse(str_detect(genres, "Horror|Comedy"), -0.4, 0) +
         ifelse(numVotes < 500 | is.na(numVotes), -0.3, 0) +
         ifelse(runtimeMinutes > 200, -pmin(0.5, (runtimeMinutes - 200) / 90), 0),
-      
+
       # Combine the positive and negative contributions
       metric = positive_metric + negative_metric,
-      
+
       # Bound the metric between -1 and 1
       metric = pmin(pmax(metric, -1), 1),
-      
+
       # Round the metric to 3 decimal places
       metric = round(metric, 3)
     ) |>
     # Drop the intermediate columns (optional)
     select(-positive_metric, -negative_metric)
-  
+
   return(df)
 }
 
-#Apply the metric function to the DataFrame
+# Apply the metric function to the DataFrame
 MOVIES <- metric_for_success(MOVIES)
 
 table(MOVIES$metric)
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-
-#3.1: Choose the top 5-10 movies by my metric to confirm successes
+# 3.1: Choose the top 5-10 movies by my metric to confirm successes
 MOVIES |>
-  filter(metric==1) |>
+  filter(metric == 1) |>
   select(
     -`isAdult`,
     -`tconst`,
@@ -580,30 +616,30 @@ MOVIES |>
 
 # This metric works really well in conjunction with a high number of votes
 MOVIES |>
-  arrange(desc(metric),desc(numVotes)) |>
-  slice_head(n=10)
+  arrange(desc(metric), desc(numVotes)) |>
+  DT::datatable()
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-
-#3.2: Choose 3-5  movies with large numbers of IMDb votes that socre poorly on your success metric and confirm
+# 3.2: Choose 3-5  movies with large numbers of IMDb votes that socre poorly on your success metric and confirm
 # that they are indeed low quality
 MOVIES |>
   arrange(metric, desc(numVotes)) |>
-  select(`primaryTitle`,
-         `releaseYear`,
-         `numVotes`,
-         `averageRating`,
-         `genres`,
-         `metric`) |>
-  slice_head(n=5)
+  select(
+    `primaryTitle`,
+    `releaseYear`,
+    `numVotes`,
+    `averageRating`,
+    `genres`,
+    `metric`
+  ) |>
+  DT::datatable(options = list(pageLength = 5))
 ```
 
 I didn't need a personal metric to tell me that these 5 movies suck
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-
-#3.3 Choose a prestige actor or director and confirm that they have many projects with high scores on your success metric.
+# 3.3 Choose a prestige actor or director and confirm that they have many projects with high scores on your success metric.
 NAME_BASICS |>
   filter(primaryName == "Stanley Kubrick") |>
   separate_longer_delim(knownForTitles, delim = ",") |>
@@ -616,15 +652,15 @@ NAME_BASICS |>
     `genres`,
     `runtimeMinutes`,
     `metric`
-         )
+  ) |>
+  DT::datatable()
 ```
 Pretty good
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
+# 3.4 Perform at least one other "spot check" validation
 
-#3.4 Perform at least one other "spot check" validation
-
-counts <- MOVIES %>%
+counts <- MOVIES |>
   summarize(
     above_7_5_high_metric = sum(averageRating > 7.5 & metric >= 0.6, na.rm = TRUE),
     between_5_and_7_5_high_metric = sum(averageRating >= 5 & averageRating <= 7.5 & metric >= 0.6, na.rm = TRUE),
@@ -634,28 +670,36 @@ counts <- MOVIES %>%
     below_5_low_metric = sum(averageRating < 5 & metric <= 0.3, na.rm = TRUE)
   )
 
-counts
+counts |>
+  DT::datatable()
 ```
 
 Although the metric is imperfect, it is pretty good at telling us what's good and what's not (based on average ratings)
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#3.5: Come up with a numerical threshold for a project to be a ‘success’; that is, determine a value such that movies above `v` are all “solid” or better.
+# 3.5: Come up with a numerical threshold for a project to be a ‘success’; that is, determine a value such that movies above `v` are all “solid” or better.
 
 v <- 0.6
 ```
 
 # Task 4: What makes a good movie?
 
+For this task, we're examining different trends in success over time.
+
+A line graph for different groups of films, broken up by popularity of the genre (>5000 films is considered "popular") and broken up by average rating and the personal average metric score.
+
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
+#| code-fold: true
 # Juuuust incase
 avgrtgthrsh <- 6.0
 
 
 # Create a new column indicating success based on averageRating
 MOVIES <- MOVIES |>
-  mutate(success_averageRating = ifelse(averageRating >= avgrtgthrsh, 1, 0),
-         success_metric = ifelse(metric >= v, 1, 0)) |>
+  mutate(
+    success_averageRating = ifelse(averageRating >= avgrtgthrsh, 1, 0),
+    success_metric = ifelse(metric >= v, 1, 0)
+  ) |>
   mutate(decade = floor(releaseYear / 10) * 10)
 
 MOVIES_GENRES <- MOVIES |>
@@ -713,77 +757,68 @@ success_by_genre_metric_less <- MOVIES_GENRES |>
 
 # Plotting Success Rates for Average Rating (Popular Genres)
 p1 <- ggplot(success_by_genre_rating_popular, aes(x = decade, y = success_rate, color = genres, group = genres)) +
-  geom_line(size = 1) +  # Add line
-  geom_point(size = 3) +  # Add points for clarity
+  geom_line(size = 1) + # Add line
+  geom_point(size = 3) + # Add points for clarity
   labs(title = "Success Rates by Genre (Average Rating - Popular Genres)", x = "Decade", y = "Success Rate (%)") +
-  scale_y_continuous(limits = c(0, 100)) +  # Set y-axis limits from 0 to 100
+  scale_y_continuous(limits = c(0, 100)) + # Set y-axis limits from 0 to 100
   theme_minimal() +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels
-    plot.title = element_text(hjust = 0.5)  # Center the title
+    axis.text.x = element_text(angle = 45, hjust = 1), # Rotate x-axis labels
+    plot.title = element_text(hjust = 0.5) # Center the title
   )
 
 # Convert ggplot to plotly for hover functionality
-p1_interactive <- ggplotly(p1)
+plt1 <- ggplotly(p1)
 
 # Plotting Success Rates for Metric (Popular Genres)
 p2 <- ggplot(success_by_genre_metric_popular, aes(x = decade, y = success_rate, color = genres, group = genres)) +
-  geom_line(size = 1) +  # Add line
-  geom_point(size = 3) +  # Add points for clarity
+  geom_line(size = 1) + # Add line
+  geom_point(size = 3) + # Add points for clarity
   labs(title = "Success Rates by Genre (Metric - Popular Genres)", x = "Decade", y = "Success Rate (%)") +
-  scale_y_continuous(limits = c(0, 100)) +  # Set y-axis limits from 0 to 100
+  scale_y_continuous(limits = c(0, 100)) + # Set y-axis limits from 0 to 100
   theme_minimal() +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels
-    plot.title = element_text(hjust = 0.5)  # Center the title
+    axis.text.x = element_text(angle = 45, hjust = 1), # Rotate x-axis labels
+    plot.title = element_text(hjust = 0.5) # Center the title
   )
 
 # Convert ggplot to plotly for hover functionality
-p2_interactive <- ggplotly(p2)
+plt2 <- ggplotly(p2)
 
 # Plotting Success Rates for Average Rating (Less Popular Genres)
 p3 <- ggplot(success_by_genre_rating_less, aes(x = decade, y = success_rate, color = genres, group = genres)) +
-  geom_line(size = 1) +  # Add line
-  geom_point(size = 3) +  # Add points for clarity
+  geom_line(size = 1) + # Add line
+  geom_point(size = 3) + # Add points for clarity
   labs(title = "Success Rates by Genre (Average Rating - Less Popular Genres)", x = "Decade", y = "Success Rate (%)") +
-  scale_y_continuous(limits = c(0, 100)) +  # Set y-axis limits from 0 to 100
+  scale_y_continuous(limits = c(0, 100)) + # Set y-axis limits from 0 to 100
   theme_minimal() +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels
-    plot.title = element_text(hjust = 0.5)  # Center the title
+    axis.text.x = element_text(angle = 45, hjust = 1), # Rotate x-axis labels
+    plot.title = element_text(hjust = 0.5) # Center the title
   )
 
 # Convert ggplot to plotly for hover functionality
-p3_interactive <- ggplotly(p3)
+plt3 <- ggplotly(p3)
 
 # Plotting Success Rates for Metric (Less Popular Genres)
 p4 <- ggplot(success_by_genre_metric_less, aes(x = decade, y = success_rate, color = genres, group = genres)) +
-  geom_line(size = 1) +  # Add line
-  geom_point(size = 3) +  # Add points for clarity
+  geom_line(size = 1) + # Add line
+  geom_point(size = 3) + # Add points for clarity
   labs(title = "Success Rates by Genre (Metric - Less Popular Genres)", x = "Decade", y = "Success Rate (%)") +
-  scale_y_continuous(limits = c(0, 100)) +  # Set y-axis limits from 0 to 100
+  scale_y_continuous(limits = c(0, 100)) + # Set y-axis limits from 0 to 100
   theme_minimal() +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels
-    plot.title = element_text(hjust = 0.5)  # Center the title
+    axis.text.x = element_text(angle = 45, hjust = 1), # Rotate x-axis labels
+    plot.title = element_text(hjust = 0.5) # Center the title
   )
 
 # Convert ggplot to plotly for hover functionality
-p4_interactive <- ggplotly(p4)
+plt4 <- ggplotly(p4)
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-p1_interactive
-p2_interactive
-p3_interactive
-p4_interactive
-```
-
-They're interactive!
-
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-#4.1: Which genre has the most "successs" in each decade"?
-
+# 4.1: Which genre has the most "successs" in each decade"?
+# 4.2 Which genre consistently has the most "successes"? Which genre used to reliably produce "successes" and has fallen out of favor?
 
 # Count successes for averageRating
 success_by_genre_rating <- MOVIES_GENRES |>
@@ -809,44 +844,42 @@ most_successful_genre_metric <- success_by_genre_metric |>
   slice_max(success_count, n = 2) |>
   ungroup()
 
-most_successful_genre_rating
-most_successful_genre_metric
+most_successful_genre_rating |>
+  DT::datatable()
+most_successful_genre_metric |>
+  DT::datatable()
 ```
-
-Drama and Action films are pretty succesfull!
-
-
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#4.2 Which genre consistently has the most "successes"? Which genre used to reliably produce "successes" and has fallen out of favor?
-p1_interactive
-p2_interactive
+plt1
+plt2
 ```
 
-Documentaries have the most consistent successes.
+Drama and Action films are pretty successful in each decade!
+
+Documentaries have the most consistent successes per decade.
 
 Horror used to produce a lot of successes but has been on a downward trend each decade.
 
-
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#4.3: What genre has produced the most “successes” since 2010?
-#Does it have the highest success rate or does it only have a large number of successes because there are many productions in that genre?
-p1_interactive
-p2_interactive
-most_successful_genre_rating
-most_successful_genre_metric
+# 4.3: What genre has produced the most “successes” since 2010?
+# Does it have the highest success rate or does it only have a large number of successes because there are many productions in that genre?
+most_successful_genre_rating |>
+  DT::datatable()
+most_successful_genre_metric |>
+  DT::datatable()
 ```
 
 Drama seems to be the answer to both of these
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#4.4: What genre has become more popular in recent years?
-
-p3_interactive
-p4_interactive
-
+# 4.4: What genre has become more popular in recent years?
+plt3
+plt4
 ```
 
-Action movies
+Action movies are on the up-and-up!
+
+Note: For `plt3`, there are two blue lines that look similar and seem to form a triangle for `Reality TV` and `News`.
 
 # Task 5: Identifying the Crew
 
@@ -855,7 +888,7 @@ Hang on to your hats because there's about to be a lot of data manipulation.
 Basically, we're going to whittle down the list of actors and directors until we find a group that matches what we're looking for in producing the next box-office smash hit.
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#Filter TITLE_BASICS based on metric threshold and genre
+# Filter TITLE_BASICS based on metric threshold and genre
 FILTERED_MOVIES <- MOVIES |>
   separate_longer_delim(genres, delim = ",") |>
   filter(success_metric == 1, genres %in% c("Action", "Drama", "Thriller", "Documentary")) |>
@@ -946,14 +979,14 @@ BEST_GENRES_ACTORS <- LAST_TEN_YEARS_ACTORS |>
 BEST_GENRES_DIRECTORS <- LAST_TEN_YEARS_DIRECTORS |>
   filter(mainGenre %in% c("Action", "Drama"))
 
-# For actors, let's get people who can work with big supporting casts. 
+# For actors, let's get people who can work with big supporting casts.
 # We don't know if that's what we want, but it'll be nice to have
 
 cast_threshold <- BEST_GENRES_ACTORS |>
   summarize(threshold = quantile(castCount, 0.95, na.rm = TRUE)) |>
   pull(threshold)
 
-  
+
 ACTORS_CREWS <- BEST_GENRES_ACTORS |>
   group_by(nconst) |>
   summarize(median_castCount = median(castCount, na.rm = TRUE)) |>
@@ -968,7 +1001,7 @@ ACTORS_CAST <- BEST_GENRES_ACTORS |>
   distinct()
 
 # Let's pull their best works only
-  
+
 BEST_FILMS_ACTORS <- ACTORS_CAST |>
   group_by(nconst) |>
   filter(avgRating == max(avgRating, na.rm = TRUE)) |>
@@ -977,14 +1010,14 @@ BEST_FILMS_ACTORS <- ACTORS_CAST |>
 # For actors, let's narrow it down to actors whos best film is from this decade
 
 CURRENT_BEST_ACTORS <- BEST_FILMS_ACTORS |>
-  filter(decade==2020)
+  filter(decade == 2020)
 
 # We'll now whittle down directors. Who can get a runtime in our sweet-spot of 70 to 150 minutes?
 
 filtered_median_runtime <- BEST_GENRES_DIRECTORS |>
   group_by(nconst) |>
-  summarize(median_runtime = median(runtimeMinutes, na.rm = TRUE)) |>  # Calculate median runtime
-  filter(median_runtime >= 70 & median_runtime <= 150)  # Filter for median runtime between 70 and 150
+  summarize(median_runtime = median(runtimeMinutes, na.rm = TRUE)) |> # Calculate median runtime
+  filter(median_runtime >= 70 & median_runtime <= 150) # Filter for median runtime between 70 and 150
 
 # Doing the same but for directors
 
@@ -1004,12 +1037,11 @@ NON_ACTOR_DIRECTORS <- BEST_FILMS_DIRECTORS |>
 
 # For directors, let's narrow it down to actors whos best film is from this decade
 CURRENT_BEST_DIRECTORS <- NON_ACTOR_DIRECTORS |>
-  filter(decade==2020)
+  filter(decade == 2020)
 ```
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 dim(NON_ACTOR_DIRECTORS)
 dim(BEST_FILMS_ACTORS)
-
 ```
 
 Taking a quick breather! We just got out data down quite a bit. Let's keep going.
@@ -1143,14 +1175,19 @@ MOST_POPULAR_DIRECTORS <- MOST_POPULAR_DIRECTORS |>
 ```
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 # Results!
-head(MOST_POPULAR_ACTORS)
 dim(MOST_POPULAR_ACTORS)
-head(MOST_POPULAR_DIRECTORS)
 dim(MOST_POPULAR_DIRECTORS)
 ```
-
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-# Identify the directors with the highest values for numVotes, filmcount, and avgDirectorRating
+MOST_POPULAR_ACTORS |>
+  DT::datatable()
+```
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+MOST_POPULAR_DIRECTORS |>
+  DT::datatable()
+```
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Identify the directors with the highest values for numVotes, filmCount, and avgDirectorRating
 highest_votes <- MOST_POPULAR_DIRECTORS |> filter(numVotes == max(numVotes, na.rm = TRUE))
 highest_film_count <- MOST_POPULAR_DIRECTORS |> filter(filmCount == max(filmCount, na.rm = TRUE))
 highest_avg_rating <- MOST_POPULAR_DIRECTORS |> filter(avgDirectorRating == max(avgDirectorRating, na.rm = TRUE))
@@ -1160,36 +1197,40 @@ labels_df <- bind_rows(highest_votes, highest_film_count, highest_avg_rating)
 
 # Create the scatter plot
 ggplot(MOST_POPULAR_DIRECTORS, aes(x = filmCount, y = numVotes, color = avgDirectorRating)) +
-  
-  geom_point(size = 3) +  # Add points with size 3
-  
-  scale_color_gradient(low = "blue", high = "red") +  # Color gradient from blue (low) to red (high)
-  
-  scale_y_continuous(labels = scales::comma, limits = c(0, 500000)) +  # Adjust y-axis to max at 500,000
-  
+  geom_point(size = 3) + # Add points with size 3
+
+  scale_color_gradient(low = "blue", high = "red") + # Color gradient from blue (low) to red (high)
+
+  scale_y_continuous(labels = scales::comma, limits = c(0, 500000)) + # Adjust y-axis to max at 500,000
+
   labs(
     title = "Scatter Plot of Directors' Film Count vs Number of Votes",
     x = "Film Count",
     y = "Number of Votes",
-    color = "Avg Director Rating"  # Label for the color legend
+    color = "Avg Director Rating" # Label for the color legend
   ) +
   
-  geom_text(data = labels_df, aes(label = paste0(" ", primaryName)), 
-            vjust = -1, color = "black", size = 4, font = "bold") +  # Add labels for the highest points
-  
-  theme_minimal(base_size = 15) +  # Increase font size for better readability
+  # Use ggrepel for better label placement
+  geom_text_repel(
+    data = labels_df, aes(label = primaryName),
+    color = "black", size = 4, fontface = "bold"
+  ) +
+
+  theme_minimal(base_size = 15) + # Increase font size for better readability
   theme(
-    plot.background = element_rect(fill = "darkgray"), 
-    panel.background = element_rect(fill = "darkgray"),  
-    axis.line = element_line(color = "white", size = 1.2), 
-    axis.text = element_text(color = "white"),  # Set axis text color to white
-    axis.title = element_text(color = "white", face = "bold"),  # Bolden axis titles
-    plot.title = element_text(hjust = 0.5, color = "white", face = "bold"),  # Center the title and bold it
-    axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate x-axis labels if needed
+    plot.background = element_rect(fill = "darkgray"),
+    panel.background = element_rect(fill = "darkgray"),
+    axis.line = element_line(color = "white", size = 1.2),
+    axis.text = element_text(color = "white"), # Set axis text color to white
+    axis.title = element_text(color = "white", face = "bold"), # Bolden axis titles
+    plot.title = element_text(hjust = 0.5, color = "white", face = "bold"), # Center the title and bold it
+    axis.text.x = element_text(angle = 45, hjust = 1), # Rotate x-axis labels if needed
+    plot.margin = unit(c(1, 1, 1, 1.5), "lines") # Add extra space to avoid clipping labels
   )
 ```
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-MOST_POPULAR_DIRECTORS
+MOST_POPULAR_DIRECTORS |>
+  DT::datatable()
 # Rian Johnson
 ```
 
@@ -1197,24 +1238,26 @@ MOST_POPULAR_DIRECTORS
 MOST_POPULAR_ACTORS |>
   filter(filmCount >= 10, mainGenre == "Action") |>
   arrange(desc(avgActorRating)) |>
-  print(n=50) 
+  DT::datatable()
 
 
 # Jacob Batalon and John DiMaggio
 MOST_POPULAR_ACTORS |>
-  filter(primaryName %in% c("Jacob Batalon","John DiMaggio"))
+  filter(primaryName %in% c("Jacob Batalon", "John DiMaggio")) |>
+  DT::datatable()
 ```
 # Task 6: Remaking a classic
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 FILTERED_MOVIES |>
-  filter(year <= 1998, grepl("action",genres,ignore.case=TRUE)) |>
+  filter(year <= 1998, grepl("action", genres, ignore.case = TRUE)) |>
   arrange(desc(numVotes)) |>
   unique() |>
-  print(n=30)
+  DT::datatable()
 # Independence Day seems like a good choice, let's make sure there's only one of it though
 
 FILTERED_MOVIES |>
-  filter(title == "Independence Day")
+  filter(title == "Independence Day") |>
+  DT::datatable()
 ```
 
 Looks like we're good to go with this remake using this cast and crew!
