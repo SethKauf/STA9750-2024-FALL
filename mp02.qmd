@@ -87,19 +87,29 @@ get_imdb_file <- function(fname){
   as.data.frame(readr::read_tsv(fname_ext, lazy=FALSE))
 }
 
-# Not gonna use this function since we already have the data
+NAME_BASICS      <- get_imdb_file("name.basics")
 
-NAME_BASICS <- read_tsv('name.basics.tsv.gz')
+TITLE_BASICS     <- get_imdb_file("title.basics")
 
-TITLE_BASICS <- read_tsv('title.basics.tsv.gz')
+TITLE_EPISODES   <- get_imdb_file("title.episode")
 
-TITLE_EPISODES <- read_tsv('title.episode.tsv.gz')
+TITLE_RATINGS    <- get_imdb_file("title.ratings")
 
-TITLE_RATINGS <- read_tsv('title.ratings.tsv.gz')
+TITLE_CREW       <- get_imdb_file("title.crew")
 
-TITLE_CREW <- read_tsv('title.crew.tsv.gz')
+TITLE_PRINCIPALS <- get_imdb_file("title.principals")
 
-TITLE_PRINCIPALS <- read_tsv('title.principals.tsv.gz')
+# NAME_BASICS <- read_tsv('name.basics.tsv.gz')
+# 
+# TITLE_BASICS <- read_tsv('title.basics.tsv.gz')
+# 
+# TITLE_EPISODES <- read_tsv('title.episode.tsv.gz')
+# 
+# TITLE_RATINGS <- read_tsv('title.ratings.tsv.gz')
+# 
+# TITLE_CREW <- read_tsv('title.crew.tsv.gz')
+# 
+# TITLE_PRINCIPALS <- read_tsv('title.principals.tsv.gz')
 
 NAME_BASICS <- NAME_BASICS |>
   filter(str_count(knownForTitles, ",") > 1)
