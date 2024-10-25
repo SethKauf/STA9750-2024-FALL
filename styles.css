@@ -56,3 +56,8 @@ table.dataTable {
   outline: none; /* Remove default outline */
   border-color: #007bff; /* Change border color on focus */
 }
+
+/* Adjust the text in the info box (e.g., "Showing 1 to 5 of 5 entries") */
+.dataTables_info {
+  color: #ddd; /* Light gray, not super white */
+}
