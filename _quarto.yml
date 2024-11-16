@@ -19,6 +19,8 @@ website:
           href: mp01.qmd
         - text: "Mini Project 2: Movies"
           href: mp02.qmd
+        - text: "Mini Project 3: Elections"
+          href: mp03.qmd
     
 format:
   html:
