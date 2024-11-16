@@ -19,30 +19,30 @@ Starring Jacob Batalon in his breakout role as Captain Steven Hiller and famous 
 
 <div style="display: grid; grid-template-columns: repeat(2, 300px); gap: 20px; justify-content: center;">
   <figure style="text-align: center;">
-    <img src="https://m.media-amazon.com/images/M/MV5BZjU5ZjQwMWEtOWM5OS00ODJmLThiZTMtODhkNTc2MWI3MWZjXkEyXkFqcGc@._V1_.jpg" alt="Jacob Batalon" style="width: 300px; height: 200px; object-fit: cover; object-position: top;">
-    <figcaption>Jacob Batalon</figcaption>
+  <img src="https://m.media-amazon.com/images/M/MV5BZjU5ZjQwMWEtOWM5OS00ODJmLThiZTMtODhkNTc2MWI3MWZjXkEyXkFqcGc@._V1_.jpg" alt="Jacob Batalon" style="width: 300px; height: 200px; object-fit: cover; object-position: top;">
+  <figcaption>Jacob Batalon</figcaption>
   </figure>
-
+  
   <figure style="text-align: center;">
-    <img src="https://static.wikia.nocookie.net/barnyard/images/9/91/JohnDiMaggio.jpg/revision/latest/scale-to-width-down/362?cb=20130915132925" alt="John DiMaggio" style="width: 320px; height: 220px; object-fit: cover; object-position: 50% 10%; margin-top: -10px;">
-    <figcaption>John DiMaggio</figcaption>
+  <img src="https://static.wikia.nocookie.net/barnyard/images/9/91/JohnDiMaggio.jpg/revision/latest/scale-to-width-down/362?cb=20130915132925" alt="John DiMaggio" style="width: 320px; height: 220px; object-fit: cover; object-position: 50% 10%; margin-top: -10px;">
+  <figcaption>John DiMaggio</figcaption>
   </figure>
-</div>
-
-
-Directed by *Glass Onion* and *Knives Out* director Rian Johnson, the action behind this film belies the mystery of the Omicronians and their true plot.
+  </div>
+  
+  
+  Directed by *Glass Onion* and *Knives Out* director Rian Johnson, the action behind this film belies the mystery of the Omicronians and their true plot.
 
 
 <figure style="text-align: center;">
   <img src="https://media.newyorker.com/photos/6377bc34da27cea69260aa08/master/pass/Chotiner-RianJohnson-1.jpg" alt="Rian Johnson" width="350" height="auto">
   <figcaption>Rian Johnson</figcaption>
-</figure>
-
-
-
-
-# How we got here
-Now that I've thoroughly grabbed your attention, how the heck did we come up with this cast of characters?
+  </figure>
+  
+  
+  
+  
+  # How we got here
+  Now that I've thoroughly grabbed your attention, how the heck did we come up with this cast of characters?
 
 After sorting through IMDb data, these three just truly spoke to us and we knew we were on to something.
 
@@ -50,7 +50,7 @@ After sorting through IMDb data, these three just truly spoke to us and we knew 
 
 Since we're doing this in `R`, let's get some code going
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r install-packages_[0], echo=TRUE, message=FALSE, warning=FALSE}
 # Install and import packages
 if (!require("ggplot2")) install.packages("ggplot2")
 if (!require("tidyverse")) install.packages("tidyverse")
@@ -78,14 +78,14 @@ library(ggrepel)
 Next let's import our data
 
 
-```{r load_large_data, echo = TRUE, message = FALSE, warning = FALSE}
+```{r load_large_data_[1], echo = TRUE, message = FALSE, warning = FALSE}
 get_imdb_file <- function(fname) {
   BASE_URL <- "https://datasets.imdbws.com/"
   fname_ext <- paste0(fname, ".tsv.gz")
   if (!file.exists(fname_ext)) {
     FILE_URL <- paste0(BASE_URL, fname_ext)
     download.file(FILE_URL,
-      destfile = fname_ext
+                  destfile = fname_ext
     )
   }
   as.data.frame(readr::read_tsv(fname_ext, lazy = FALSE))
@@ -108,7 +108,7 @@ NAME_BASICS <- NAME_BASICS |>
 ```
 
 Looking at the data we just pulled
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r view-data_[2], echo=TRUE, message=FALSE, warning=FALSE}
 TITLE_RATINGS |>
   ggplot(aes(x = numVotes)) +
   geom_histogram(bins = 30) +
@@ -120,7 +120,7 @@ TITLE_RATINGS |>
   scale_y_continuous(label = scales::comma)
 ```
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r data-joining_1_[3], echo=TRUE, message=FALSE, warning=FALSE}
 TITLE_RATINGS |>
   pull(numVotes) |>
   quantile()
@@ -173,17 +173,17 @@ NAME_BASICS <- NAME_BASICS |>
 ```
 
 We have several tasks to complete with this data, including some EDA!
-
+  
 # Task 1: Clean Clean Clean
-
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+  
+```{r convert-to_numeric_[4], echo=TRUE, message=FALSE, warning=FALSE}
 convert_columns <- function(data, columns, conversion = "numeric") {
   # Check if conversion is valid
-
+  
   if (!conversion %in% c("numeric", "logical")) {
     stop("Invalid conversion type. Choose either 'numeric' or 'logical'.")
   }
-
+  
   # Apply the conversion based on argument
   if (conversion == "numeric") {
     data <- data |>
@@ -192,7 +192,7 @@ convert_columns <- function(data, columns, conversion = "numeric") {
     data <- data |>
       mutate(across(all_of(columns), as.logical))
   }
-
+  
   return(data)
 }
 
@@ -203,7 +203,7 @@ TITLE_EPISODES <- convert_columns(TITLE_EPISODES, columns = c("seasonNumber", "e
 # Task 2: Provided Questions, Provided Answers
 
 Here we seek to answer several questions from the dataset.
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r table-glimpse_[5], echo=TRUE, message=FALSE, warning=FALSE}
 # 2.1: How many movies are in our data set? How many TV series? How many TV episodes?
 
 # TITLE_BASICS will have this answer
@@ -213,7 +213,7 @@ glimpse(TITLE_BASICS)
 table(TITLE_BASICS$titleType)
 ```
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r media-count_[6], echo=TRUE, message=FALSE, warning=FALSE}
 MOVIE_COUNT <- TITLE_BASICS |>
   filter(`titleType` == "movie") |>
   select(`tconst`) |>
@@ -239,7 +239,7 @@ TV_EPISODE_COUNT <- TITLE_BASICS |>
 sprintf("There are %s TV Episodes in the data", format(TV_EPISODE_COUNT, big.mark = ",", scientific = FALSE))
 ```
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r oldest-person_1_[7], echo=TRUE, message=FALSE, warning=FALSE}
 # 2.2: Oldest living person in data
 glimpse(NAME_BASICS)
 
@@ -247,20 +247,13 @@ OLDEST <- NAME_BASICS |>
   filter(is.na(`deathYear`)) |>
   arrange(`birthYear`) |>
   select(`primaryName`, `birthYear`, `deathYear`) |>
-  slice_head(n = 10)
+  slice_head(n = 100)
 
 OLDEST |>
-  DT::datatable()
+  DT::datatable(options = list(pageLength = 5))
 ```
 Clearly this isn't the way to go about this
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-glimpse(TITLE_BASICS)
-glimpse(NAME_BASICS)
-
-NAME_BASICS |>
-  separate_longer_delim(knownForTitles, ",") |>
-  DT::datatable()
-
+```{r oldest-person_2_[8], echo=TRUE, message=FALSE, warning=FALSE}
 TITLES_AND_NAMES <- NAME_BASICS |>
   separate_longer_delim(knownForTitles, delim = ",") |>
   inner_join(TITLE_BASICS, by = c("knownForTitles" = "tconst")) |>
@@ -272,10 +265,9 @@ TITLES_AND_NAMES <- NAME_BASICS |>
 
 TITLES_AND_NAMES |>
   DT::datatable()
-# Because there are too many NULL deathYear values, this question can't really be answered
 ```
-
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+Because there are too many NULL deathYear values, this question can't really be answered
+```{r perfect-episode_[9], echo=TRUE, message=FALSE, warning=FALSE}
 # 2.3: There is one TV Episode in this data set with a perfect 10/10 rating and at least 200,00 IMDb ratings. What is it? Which series does it belong to?
 glimpse(TITLE_RATINGS)
 
@@ -296,7 +288,7 @@ HIGHEST_RATED <- TITLE_RATINGS |>
     `numVotes`
   )
 
-head(HIGHEST_RATED) |>
+HIGHEST_RATED |>
   DT::datatable()
 ```
 Unsurprisingly, it's a season 5 episode of Breaking Bad, specifically, the one where Hank gets got
@@ -305,15 +297,14 @@ If anyone's interested in a famous scene (and meme) from this episode (Warning: 
 
 <div style="text-align: center;">
   <figure>
-    <a href="https://www.youtube.com/watch?v=YCrngJCkI8I" target="_blank">
-      <img src="https://img.youtube.com/vi/YCrngJCkI8I/hqdefault.jpg" alt="Video Preview" style="width: 500px; height: auto;">
-    </a>
-    <figcaption>SPOILERS!!</figcaption>
+  <a href="https://www.youtube.com/watch?v=YCrngJCkI8I" target="_blank">
+  <img src="https://img.youtube.com/vi/YCrngJCkI8I/hqdefault.jpg" alt="Video Preview" style="width: 500px; height: auto;">
+  </a>
+  <figcaption>SPOILERS!!</figcaption>
   </figure>
-</div>
-
-
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+  </div>
+  
+```{r mark-hamill_[10], echo=TRUE, message=FALSE, warning=FALSE}
 # 2.4: Which 4 projects is actor Mark Hamill most known for?
 
 # Just guessing beforehand: Star War IV, V, VI, and VA for the Joker in the Batman animated series
@@ -341,14 +332,14 @@ Apparently, Star Wars Episode VIII gets a listing before his Joker VA. Hard disa
 
 <div style="text-align: center;">
   <figure>
-    <a href="https://www.youtube.com/watch?v=_gBWpWwIBKw" target="_blank">
-      <img src="https://img.youtube.com/vi/_gBWpWwIBKw/hqdefault.jpg" alt="Video Preview" style="width: 500px; height: auto;">
-    </a>
-    <figcaption>Mark Hamill's Joker is iconic!</figcaption>
+  <a href="https://www.youtube.com/watch?v=_gBWpWwIBKw" target="_blank">
+  <img src="https://img.youtube.com/vi/_gBWpWwIBKw/hqdefault.jpg" alt="Video Preview" style="width: 500px; height: auto;">
+  </a>
+  <figcaption>Mark Hamill's Joker is iconic!</figcaption>
   </figure>
 </div>
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r twelve-eps_[11], echo=TRUE, message=FALSE, warning=FALSE}
 # 2.5: What TV series, with more than 12 episodes, has the highest average rating?
 glimpse(TITLE_EPISODES)
 glimpse(TITLE_BASICS)
@@ -377,7 +368,7 @@ TWELVE_EP_SERIES |>
   DT::datatable()
 ```
 No clue what these shows are, but here they are.
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r happy-days_[12], echo=TRUE, message=FALSE, warning=FALSE}
 # 2.6: The TV Series Happy Days (1974-1984) gives us the common idiom "jump the shark". The phrase comes from
 # a controversial fifth season episode (aired in 1977) in which a lead character literally jumped over a shark on
 # water skis. Idiomatically, it is used to refer to the moment when a once-great show becomes ridiculous and
@@ -470,12 +461,12 @@ Here we create a "success" metric to determine whether or not a film meets our o
 
 First let's define success. We want to look at two features:
   * Average Rating
-  * Num Votes
+* Num Votes
 Other features of note could be
-  * Crew Size
-  * Run Time
+* Crew Size
+* Run Time
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r flops-and-successes_1_[13], echo=TRUE, message=FALSE, warning=FALSE}
 # First let's just get only movie data from 1960 onwards
 MOVIES <- TITLE_BASICS |>
   filter(titleType == "movie", startYear >= 1960)
@@ -534,7 +525,7 @@ describe(SUCCESSES)
 
 Successes seem to be longer on average but also confined to a range of 1,440 minutes runtime while flops get a little silly. A lot more people vote for successes (surprising because you'd think people are <a href="https://www.nationalstrategic.com/why-would-they-write-that-the-psychology-of-customer-reviews/" target="_blank">more likely to respond if they dislike something</a> than if they like it.
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r flops-and-successes_2_[14], echo=TRUE, message=FALSE, warning=FALSE}
 # The number of genres used seem to not matter pretty much at all
 
 Mode <- function(x) {
@@ -546,6 +537,8 @@ Mode(SUCCESSES$genres)
 Mode(FLOPS$genres)
 
 head(sort(desc(table(SUCCESSES$genres))), n = 20)
+
+
 head(sort(desc(table(FLOPS$genres))), n = 20)
 
 table(SUCCESSES$isAdult)
@@ -558,15 +551,15 @@ Documentaries and Dramas are successful while Horror is not. Comedy can go eithe
 
 **Metrics for success:**
   * Good genre (Drama, Documentary)
-  * High number of votes (> 500)
-  * Runtime between 70 minutes and 150 minutes. Dock points for each STD outside of that.
+* High number of votes (> 500)
+* Runtime between 70 minutes and 150 minutes. Dock points for each STD outside of that.
 
 **Metrics for flop:**
   * Bad genre (Horror, Comedy)
-  * Low number of votes (<= 500)
-  * Runtime greater than 200 minutes.
-  
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+* Low number of votes (<= 500)
+* Runtime greater than 200 minutes.
+
+```{r personal-metric_[15], echo=TRUE, message=FALSE, warning=FALSE}
 # Define the metric for success function
 metric_for_success <- function(df) {
   df <- df |>
@@ -575,24 +568,24 @@ metric_for_success <- function(df) {
       positive_metric = ifelse(str_detect(genres, "Drama|Documentary"), 0.2, 0) +
         ifelse(numVotes >= 500, 0.4, 0) +
         ifelse(runtimeMinutes >= 70 & runtimeMinutes <= 150, 0.4, 0),
-
+      
       # Calculate negative contributions
       negative_metric = ifelse(str_detect(genres, "Horror|Comedy"), -0.4, 0) +
         ifelse(numVotes < 500 | is.na(numVotes), -0.3, 0) +
         ifelse(runtimeMinutes > 200, -pmin(0.5, (runtimeMinutes - 200) / 90), 0),
-
+      
       # Combine the positive and negative contributions
       metric = positive_metric + negative_metric,
-
+      
       # Bound the metric between -1 and 1
       metric = pmin(pmax(metric, -1), 1),
-
+      
       # Round the metric to 3 decimal places
       metric = round(metric, 3)
     ) |>
     # Drop the intermediate columns (optional)
     select(-positive_metric, -negative_metric)
-
+  
   return(df)
 }
 
@@ -602,7 +595,7 @@ MOVIES <- metric_for_success(MOVIES)
 table(MOVIES$metric)
 ```
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r metric-stratification_[16], echo=TRUE, message=FALSE, warning=FALSE}
 # 3.1: Choose the top 5-10 movies by my metric to confirm successes
 MOVIES |>
   filter(metric == 1) |>
@@ -611,7 +604,8 @@ MOVIES |>
     -`tconst`,
     -`genre_count`
   ) |>
-  sample_n(10)
+  sample_n(10) |>
+  DT::datatable()
 
 # This metric works really well in conjunction with a high number of votes
 MOVIES |>
@@ -619,7 +613,7 @@ MOVIES |>
   DT::datatable()
 ```
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r bad-movies_[17], echo=TRUE, message=FALSE, warning=FALSE}
 # 3.2: Choose 3-5  movies with large numbers of IMDb votes that socre poorly on your success metric and confirm
 # that they are indeed low quality
 MOVIES |>
@@ -635,9 +629,9 @@ MOVIES |>
   DT::datatable(options = list(pageLength = 5))
 ```
 
-I didn't need a personal metric to tell me that these 5 movies suck
+I didn't need a personal metric to tell me that these 5 movies suck.
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r stanley-kubrick_[18], echo=TRUE, message=FALSE, warning=FALSE}
 # 3.3 Choose a prestige actor or director and confirm that they have many projects with high scores on your success metric.
 NAME_BASICS |>
   filter(primaryName == "Stanley Kubrick") |>
@@ -656,7 +650,7 @@ NAME_BASICS |>
 ```
 Pretty good
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r metrics-count_check_[19], echo=TRUE, message=FALSE, warning=FALSE}
 # 3.4 Perform at least one other "spot check" validation
 
 counts <- MOVIES |>
@@ -675,9 +669,10 @@ counts |>
 
 Although the metric is imperfect, it is pretty good at telling us what's good and what's not (based on average ratings)
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r metrics-threshold_[20], echo=TRUE, message=FALSE, warning=FALSE}
 # 3.5: Come up with a numerical threshold for a project to be a ‘success’; that is, determine a value such that movies above `v` are all “solid” or better.
 
+# 0.6 seems reasonable given the above table
 v <- 0.6
 ```
 
@@ -687,7 +682,7 @@ For this task, we're examining different trends in success over time.
 
 A line graph for different groups of films, broken up by popularity of the genre (>5000 films is considered "popular") and broken up by average rating and the personal average metric score.
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r interactive-plots_crtn_[21], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: true
 # Juuuust incase
 avgrtgthrsh <- 6.0
@@ -815,9 +810,10 @@ p4 <- ggplot(success_by_genre_metric_less, aes(x = decade, y = success_rate, col
 plt4 <- ggplotly(p4)
 ```
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r successful-genres_[22], echo=TRUE, message=FALSE, warning=FALSE}
 # 4.1: Which genre has the most "successs" in each decade"?
 # 4.2 Which genre consistently has the most "successes"? Which genre used to reliably produce "successes" and has fallen out of favor?
+# 4.4: What genre has become more popular in recent years?
 
 # Count successes for averageRating
 success_by_genre_rating <- MOVIES_GENRES |>
@@ -848,37 +844,34 @@ most_successful_genre_rating |>
 most_successful_genre_metric |>
   DT::datatable()
 ```
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r interactive-plots_display_[23], echo=TRUE, message=FALSE, warning=FALSE}
 plt1
 plt2
+plt3
+plt4
 ```
 
-Drama and Action films are pretty successful in each decade!
+*4.1*: Drama and Action films are pretty successful in each decade!
+  
+  *4.2*: Documentaries have the most consistent successes per decade.
 
-Documentaries have the most consistent successes per decade.
+*4.2*: Horror used to produce a lot of successes but has been on a downward trend each decade.
 
-Horror used to produce a lot of successes but has been on a downward trend each decade.
+*4.4*: Action movies are on the up-and-up!
+  
+  *Note*: For `plt3`, there are two blue lines that look similar and seem to form a triangle for `Reality TV` and `News`.
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r overtime-success_[24], echo=TRUE, message=FALSE, warning=FALSE}
 # 4.3: What genre has produced the most “successes” since 2010?
 # Does it have the highest success rate or does it only have a large number of successes because there are many productions in that genre?
 most_successful_genre_rating |>
   DT::datatable()
+
 most_successful_genre_metric |>
   DT::datatable()
 ```
 
 Drama seems to be the answer to both of these
-
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-# 4.4: What genre has become more popular in recent years?
-plt3
-plt4
-```
-
-Action movies are on the up-and-up!
-
-Note: For `plt3`, there are two blue lines that look similar and seem to form a triangle for `Reality TV` and `News`.
 
 # Task 5: Identifying the Crew
 
@@ -886,7 +879,8 @@ Hang on to your hats because there's about to be a lot of data manipulation.
 
 Basically, we're going to whittle down the list of actors and directors until we find a group that matches what we're looking for in producing the next box-office smash hit.
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r data-joining_2_[25], echo=TRUE, message=FALSE, warning=FALSE}
+#| code-fold: true
 # Filter TITLE_BASICS based on metric threshold and genre
 FILTERED_MOVIES <- MOVIES |>
   separate_longer_delim(genres, delim = ",") |>
@@ -1038,14 +1032,15 @@ NON_ACTOR_DIRECTORS <- BEST_FILMS_DIRECTORS |>
 CURRENT_BEST_DIRECTORS <- NON_ACTOR_DIRECTORS |>
   filter(decade == 2020)
 ```
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r table-dims_1_[26], echo=TRUE, message=FALSE, warning=FALSE}
 dim(NON_ACTOR_DIRECTORS)
 dim(BEST_FILMS_ACTORS)
 ```
 
 Taking a quick breather! We just got out data down quite a bit. Let's keep going.
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r data-joining_3_[27], echo=TRUE, message=FALSE, warning=FALSE}
+#| code-fold: true
 MOST_POPULAR_ACTORS <- CURRENT_BEST_ACTORS |>
   left_join(FILTERED_MOVIES, by = c("tconst" = "tconst")) |>
   select(
@@ -1074,7 +1069,8 @@ MOST_POPULAR_ACTORS <- MOST_POPULAR_ACTORS |>
 MOST_POPULAR_ACTORS <- MOST_POPULAR_ACTORS |>
   filter(!is.na(film_count))
 
-head(MOST_POPULAR_ACTORS)
+MOST_POPULAR_ACTORS |>
+  DT::datatable(options = list(pageLength = 5))
 
 # Step 1: Join MOST_POPULAR_ACTORS with TITLE_PRINCIPALS to get tconst (movies the actor was part of)
 actor_movies <- MOST_POPULAR_ACTORS |>
@@ -1172,20 +1168,18 @@ MOST_POPULAR_DIRECTORS <- MOST_POPULAR_DIRECTORS |>
     avgDirectorRating = `avg_rating`
   )
 ```
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-# Results!
+```{r table-dims_1_[28], echo=TRUE, message=FALSE, warning=FALSE}
+# Looking at the dimensions of our stratified dataframes
 dim(MOST_POPULAR_ACTORS)
 dim(MOST_POPULAR_DIRECTORS)
 ```
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+```{r popular-actors_[29], echo=TRUE, message=FALSE, warning=FALSE}
 MOST_POPULAR_ACTORS |>
   DT::datatable()
 ```
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-MOST_POPULAR_DIRECTORS |>
-  DT::datatable()
-```
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+Looking at directors now
+```{r directors-plot_[30], echo=TRUE, message=FALSE, warning=FALSE}
+#| code-fold: true
 # Identify the directors with the highest values for numVotes, filmCount, and avgDirectorRating
 highest_votes <- MOST_POPULAR_DIRECTORS |> filter(numVotes == max(numVotes, na.rm = TRUE))
 highest_film_count <- MOST_POPULAR_DIRECTORS |> filter(filmCount == max(filmCount, na.rm = TRUE))
@@ -1203,7 +1197,7 @@ ggplot(MOST_POPULAR_DIRECTORS, aes(x = filmCount, y = numVotes, color = avgDirec
   scale_y_continuous(labels = scales::comma, limits = c(0, 500000)) + # Adjust y-axis to max at 500,000
 
   labs(
-    title = "Scatter Plot of Directors' Film Count vs Number of Votes",
+    title = "Directors' Film Count vs Number of Votes",
     x = "Film Count",
     y = "Number of Votes",
     color = "Avg Director Rating" # Label for the color legend
@@ -1227,13 +1221,13 @@ ggplot(MOST_POPULAR_DIRECTORS, aes(x = filmCount, y = numVotes, color = avgDirec
     plot.margin = unit(c(1, 1, 1, 1.5), "lines") # Add extra space to avoid clipping labels
   )
 ```
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+The two names are the highest Film Count and highest Average Director Rating.
+```{r popular-directors_[31], echo=TRUE, message=FALSE, warning=FALSE}
 MOST_POPULAR_DIRECTORS |>
   DT::datatable()
-# Rian Johnson
 ```
-
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+Rian Johnson seems like a solid choice from the data
+```{r action-actors_[32], echo=TRUE, message=FALSE, warning=FALSE}
 MOST_POPULAR_ACTORS |>
   filter(filmCount >= 10, mainGenre == "Action") |>
   arrange(desc(avgActorRating)) |>
@@ -1245,10 +1239,18 @@ MOST_POPULAR_ACTORS |>
   filter(primaryName %in% c("Jacob Batalon", "John DiMaggio")) |>
   DT::datatable()
 ```
+
+Jacob Batalon and John DiMaggio seem to have some good experience with action films and are fairly popular.
+
 # Task 6: Remaking a classic
-```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+For this, we're going to pick an Action movie as it is one of the best-performing genres.
+
+We need something from 1998 or earlier (<= 25 years), and preferably something with a rating of less than 7.5, as
+remaking something that's highly rated will just make people mad and not give us room to explore our film.
+```{r movie-remake_[33], echo=TRUE, message=FALSE, warning=FALSE}
 FILTERED_MOVIES |>
-  filter(year <= 1998, grepl("action", genres, ignore.case = TRUE)) |>
+  filter(year <= 1998, grepl("action", genres, ignore.case = TRUE), avgRating <= 7.5) |>
   arrange(desc(numVotes)) |>
   unique() |>
   DT::datatable()
@@ -1259,4 +1261,4 @@ FILTERED_MOVIES |>
   DT::datatable()
 ```
 
-Looks like we're good to go with this remake using this cast and crew!
+Looks like we're good to go with remaking Independence Day using this cast and crew!

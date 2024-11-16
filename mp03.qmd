@@ -302,7 +302,7 @@ house |>
   group_by(candidate) |>
   summarize(votes = sum(candidatevotes)) |>
   arrange(desc(votes))  |>
-  DT::datatable()
+  DT::datatable(options = list(pageLength = 5))
 
 # Find instance but also grouped on  'party' instead of candidate
 house |>
@@ -310,7 +310,7 @@ house |>
   group_by(party) |>
   summarize(votes = sum(candidatevotes)) |>
   arrange(desc(votes)) |>
-  DT::datatable()
+  DT::datatable(options = list(pageLength = 7))
 ```
 This is the sample from the prompt, both grouped by candidate name and their associated party(s).
 
@@ -364,7 +364,7 @@ house_votes <- house |> # Start with just the cols we want
 house_votes |>
   filter(year == 2000, state == "CONNECTICUT", district == 2) |>
   select(year, state, district, candidate, party, ballotcount, candidatevotes, pctvote_candidate, pctvote_party, max_pctvote_party, max_pctvote_candidate) |>
-  DT::datatable()
+  DT::datatable(options = list(pageLength = 3))
 ```
 In Connecticut's 2nd District in 2000, Sam Gejdenson's Democratic party received the most votes, however candidate Rob Simmons on the Independent and Republican ticket won the vote by a razor-thin margin that required votes from both parties
 
@@ -455,7 +455,7 @@ merged_states |>
   arrange(desc(pctdiff)) |>
   DT::datatable(
     options = list(
-      pageLength = -1,
+      pageLength = 18,
       columnDefs = list(
         # Adding commas for these columns
         list(
@@ -1130,6 +1130,3 @@ combined_ev_data |>
 ```
 
 So, no, even in this adjusted format, none of the races are flipped. However, they are a lot closer than before. 2016 for example would have come down to the wire, with the Republicans only winning by a single electoral vote. However, in the other race where the candidate who won the popular vote lost, 2000, we see the Democrats actually lose adjusted votes in this method, as other parties manage to take 5 electoral votes away from them + 1 for the Republicans.
-
-
-```
