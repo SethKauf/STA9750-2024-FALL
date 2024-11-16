@@ -1,7 +1,6 @@
 ---
 title: Mini Project 2
 format: html
-theme: Superhero
 css: styles.css
 ---
 

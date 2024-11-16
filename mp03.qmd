@@ -253,14 +253,14 @@ ggplot(state_changes, aes(x = reorder(state, votes_change), y = votes_change, fi
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-
+Taking a quick look at New York's Electoral Votes over time.
 ```{r ny_evotes_[5], echo=TRUE, message=FALSE, warning=FALSE}
 # View New York's electoral votes over the decades
 evotes |>
   filter(state == "NEW YORK", year %in% c(1980, 2000, 2020))
 ```
   
-  
+And finally, a line graph of all 50 States' Electoral Votes + DC
 ```{r evotes_linegraph_[6], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
 # Create the line graph with ggplot2

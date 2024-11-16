@@ -271,6 +271,7 @@ library(ggplot2)
 library(lubridate)
 
 dates <- seq(ymd("2019-04-01"), by = "month", length.out = 13)
+
 ridership <- c(USAGE |>
                  filter(month >= '2019-04-01',
                         month < '2020-05-01',
