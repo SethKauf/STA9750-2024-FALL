@@ -8,16 +8,14 @@ css: styles.css
 
 With the 2024 election in the rear-view mirror, now seems to be as good of a time as any to reflect on the electoral process in the United States.
 
-Figuring out the best way to represent the citizens is an ongoing debate in Liberal Ideology. In the United States through our representative democracy, we elect members of Congress and the President to lead the Federal government on cycles of 2 years for a Representative and 6 years for a Senator, while the Presidential cycle is an election every 4 years.
+Figuring out the best way to represent the citizens is an ongoing debate in democracies. Through our representative democracy in the United States through, we elect members of Congress and the President to lead the Federal government on cycles of 2 years for a Representative and 6 years for a Senator, while the Presidential cycle is an election every 4 years.
 
 
-This project is going to look at some election data from 1976 through 2020 for both the U.S. House of Represenatives and the President, before ultimately asking and (lightly) answering if there is a better way to do our current election system for President, which involves delegating votes through [the Electoral College](https://en.wikipedia.org/wiki/United_States_Electoral_College).
+This project is going to look at some election data from 1976 through 2020 for both the U.S. House of Representatives and the President, before ultimately asking and (lightly) answering if there is a better way to do our current election system for President, which involves delegating votes through [the Electoral College](https://en.wikipedia.org/wiki/United_States_Electoral_College).
 
 # TASK 0
 This is a package-install if you want to replicate the work
 ```{r install-packages_[0], echo=TRUE, message=FALSE, warning=FALSE}
-#| code-fold: true
-
 if (!require("data.table")) install.packages("data.table")
 if (!require("dplyr")) install.packages("dplyr")
 if (!require("DT")) install.packages("DT")
@@ -206,13 +204,7 @@ evotes <- evotes |>
     data.frame(state = "DISTRICT OF COLUMBIA", year = 2022, electoral_votes = 3)
   )
 
-# View New York's electoral votes over the decades
-evotes |>
-  filter(state == "NEW YORK", year %in% c(1980, 2000, 2020))
-```
-Looking at New York's loss of Electoral Votes/Seats over the decades...
-
-```{r evotes_over_time_2_[5], echo=TRUE, message=FALSE, warning=FALSE}
+#| code-fold: TRUE
 # Electoral Votes change from 1976 to 2022
 evotes_overtime <- evotes |>
   group_by(state) |>
@@ -261,6 +253,14 @@ ggplot(state_changes, aes(x = reorder(state, votes_change), y = votes_change, fi
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
+
+```{r ny_evotes_[5], echo=TRUE, message=FALSE, warning=FALSE}
+# View New York's electoral votes over the decades
+evotes |>
+  filter(state == "NEW YORK", year %in% c(1980, 2000, 2020))
+```
+  
+  
 ```{r evotes_linegraph_[6], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
 # Create the line graph with ggplot2
