@@ -45,6 +45,8 @@ library(tidyverse)
 # TASK 1: US House Election Votes from 1976 to 2022
 We download the dataset from [MIT Election Data Science Lab](https://electionlab.mit.edu/)
 for the [U.S. House of Representatives](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/IG0UN2) and [the President](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/42MVDX) manually.
+
+An election range of 1976 - 2022 for the House and 1976 - 2020 for the Presidency helps us keep a reasonable range to the "modern era" of U.S. Elections.
 ```{r load_in_data_[1], echo=FALSE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
 # Read in manually downloaded data from congressional elections
@@ -104,13 +106,15 @@ shapefiles <- read_csv("district_shapefiles.csv")
 shapefiles |>
   DT::datatable()
 ```
-This tells us the date-range that each `district` shapefile corresponds to. The number in the filename represents the election cycle for that district.
+This tells us the date-range that each `district` shapefile corresponds to. The number in the filename represents the election cycle for that district. This will be useful for further analysis.
 
 # Task 3: Exploration of Vote Count Data
 
 ## TASK 3.1: Flipped
 
-> Which states have gained and lost the most seats in the US House of Representatives between 1976 and 2022?
+> Which states have gained and lost the most seats in the U.S. House of Representatives between 1976 and 2022?
+
+In the U.S., the lower-body of Congress, the U.S. House of Representatives, may have [no-more than 435 total Representatives at any given] time(https://www.house.gov/representatives#:~:text=The%20number%20of%20voting%20representatives,of%20the%20Northern%20Mariana%20Islands.). The number of representatives a state has is proportional to their population. As of the 2022 election, California is the most represented state with 52 representatives, while states like Alaska, Delaware, Vermont, and both of the Dakotas, each have only 1 representative. These numbers are always subject to change, for example, in the 2020 election California had 53 representatives. Below we'll look at the net gain/loss for each state from 1976 through 2022, with a bit of focus on my home state of New York.
 
 ```{r seats_and_evotes_[3], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
@@ -253,7 +257,7 @@ ggplot(state_changes, aes(x = reorder(state, votes_change), y = votes_change, fi
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-Taking a quick look at New York's Electoral Votes over time.
+Taking a quick look at New York's Electoral Votes over time for New York.
 ```{r ny_evotes_[5], echo=TRUE, message=FALSE, warning=FALSE}
 # View New York's electoral votes over the decades
 evotes |>
@@ -293,6 +297,8 @@ A bit of a busy linegraph because there's 50 States + DC on it, but some interes
 > New York State has a unique “fusion” voting system where one candidate can appear on multiple “lines” on the ballot and their vote counts are totaled. For instance, in 2022, Jerrold Nadler appeared on both the Democrat and Working Families party lines for NYS’ 12th Congressional District. He received 200,890 votes total (184,872 as a Democrat and 16,018 as WFP), easily defeating Michael Zumbluskas, who received 44,173 votes across three party lines (Republican, Conservative, and Parent).
 
 > Are there any elections in our data where the election would have had a different outcome if the “fusion” system was not used and candidates only received the votes their received from their “major party line” (Democrat or Republican) and not their total number of votes across all lines?
+
+To answer this question, let's first find the election mentioned above, then group votes on both `party` and `candidate` separately to see if we can find any outstanding differences between the two in any election.
 
 Let's group our `house` table on Candidate and Party.
 ```{r NY_2022_D12_[7], echo=TRUE, message=FALSE, warning=FALSE}
@@ -516,6 +522,16 @@ read_shp_from_zip <- function(file) {
 # Task 5: Chloropleth Visualization of the 2000 Presidential Election Electoral College Results
 
 Here we create a *Chloropleth Visualization* of the 2000 Presidential Election between candidates Al Gore (D) and George W. Bush (R).
+
+This was a particularly contentious election that was [famously decided by the Supreme Court](https://www.nytimes.com/2000/12/13/us/bush-prevails-single-vote-justices-end-recount-blocking-gore-after-5-week.html) due to the uncertainty of the balloting system in Florida.
+
+
+
+<figure style="text-align: center; margin-top: 20px;">
+  <img src="http://blogs.smithsonianmag.com/design/files/2012/11/butterfly-ballot_470.jpg" alt="Florida Butterfly Ballot" style="width: 600px; height: auto;">
+  <figcaption>Sample *Butterfly Ballot* in Florida from the 2000 Presidential Election</figcaption>
+</figure>
+
 ```{r districts_files_[11], echo=TRUE, message=FALSE, warning=FALSE}
 # Find which file will have the 2000 election
 files_dict <- read_csv("district_shapefiles.csv")
@@ -677,7 +693,7 @@ Having some trouble with the pop-outs for the EV's on smaller states, but it wor
 
 # TASK 6: Advanced Chloropleth Visualization of Electoral College Results
 
-Create an animated Chloropleth for each election year.
+For this next step, we just want to view the same map as from *Task 5* but for each year of the Presidential cycle.
 
 ```{r animated_map_[13], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
@@ -778,6 +794,8 @@ Some things to work out with this, but it works.
 
 > As you perform your analysis, you may assume that the District of Columbia has three ECVs, which are allocated to the Democratic candidate under all schemes except possibly national popular vote.
 
+Fact-checking the fairness of the Presidential Electoral Process is a controversial topic to say the least. Our current system allots the winning electoral votes, which is defined as $R+2$ Where $R$ is the number of Representatives for any given state (and $2$ could also be seen as the number of Senators per state, which is $2$ each), as 100% to the winner of each states' popular vote. Alternatives to this process have been proposed and, as discussed further down, two states have even implemented a different process, so let's get into it.
+
 ```{r electoral_votes_1_[16], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
 # Current Method: EV to whoever wins the vote in the state
@@ -871,9 +889,9 @@ However, going by popular vote isn't necessarily the best way either. A lot of c
 
 But, going by the popular vote might not be the answer either. If we just cared who won the popular vote, then we might in-fact have the opposite problems: places with large population centers such as New York, California, Illinois, and Texas will be catered to, while other states could be "safely" ignored. Basically, win the cities, win the election.
 
-A method I've been interested in is proportional votes. This method gives ECs proportional to the districts in a state.
+A method I've been interested in is proportional votes. This method gives Electoral College votes proportional to the districts in a state.
 
-Currently, only Maine and Nebraska practice this, [which has given electoral votes to those states' losing party on several occasions each](https://www.270towin.com/content/split-electoral-votes-maine-and-nebraska/).
+Currently, only Maine and Nebraska practice this, [which has given electoral votes to those states' "losing party" on several occasions each](https://www.270towin.com/content/split-electoral-votes-maine-and-nebraska/).
 
 Below is a table that calculates "proportional electoral votes" for the four major categories: Democrat, Republican, Libertarian, and Other.
 
@@ -881,7 +899,7 @@ It calculates the % of candidate votes receieved as part of the total for each s
 
 Using our working example of New York in 2020, where the Democrats received all 29 electoral votes, in this adjusted method, they now receive only 19 while Republicans gain the remaining 10.
 
-This is imperfect and due to rounding-down, there were remaining electoral votes. I have decided to give any remaining votes (minimum of 1, maximum of 3) to whichever party won the most candidate votes for a state-year combo. There are better ways of doing this, but for the purposes of exploratory analysis, this should work fine.
+This is imperfect and due to rounding-down, there were remaining electoral votes. I have decided to give any remaining votes (minimum of 1, maximum of 3) to whichever party won the most candidate votes for a state-year combo. Because this is just exploratory analysis, this is fine, but there might be other, better ways of doing this.
 
 
 ```{r adjusted_evs_[18], echo=TRUE, message=FALSE, warning=FALSE}

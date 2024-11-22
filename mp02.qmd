@@ -305,6 +305,7 @@ If anyone's interested in a famous scene (and meme) from this episode (Warning: 
   </div>
   
 ```{r mark-hamill_[10], echo=TRUE, message=FALSE, warning=FALSE}
+#| code-fold: TRUE
 # 2.4: Which 4 projects is actor Mark Hamill most known for?
 
 # Just guessing beforehand: Star War IV, V, VI, and VA for the Joker in the Batman animated series
@@ -312,8 +313,11 @@ If anyone's interested in a famous scene (and meme) from this episode (Warning: 
 MARK_HAMILL <- NAME_BASICS |>
   filter(primaryName == "Mark Hamill")
 
-MARK_HAMILL # going to guess the record with multiple titles is the correct Mark Hamill
+MARK_HAMILL |> # going to guess the record with multiple titles is the correct Mark Hamill
+  DT::datatable()
+```
 
+```{r mark-hamill_2_[10.5], echo=TRUE, message=FALSE, warning=FALSE}
 MARK_HAMILL <- NAME_BASICS |>
   filter(nconst == "nm0000434") |>
   separate_longer_delim(knownForTitles, delim = ",") |>

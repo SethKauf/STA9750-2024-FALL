@@ -21,6 +21,8 @@ website:
           href: mp02.qmd
         - text: "Mini Project 3: Elections"
           href: mp03.qmd
+        - text: "Mini Project 4: Finance"
+          href: mp04.qmd
     
 format:
   html:
