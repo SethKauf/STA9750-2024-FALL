@@ -27,6 +27,7 @@ if (!require("readr")) install.packages("readr")
 if (!require("sf")) install.packages("sf")
 if (!require("tidyverse")) install.packages("tidyverse")
 if (!require("tidyr")) install.packages("tidyr")
+if (!require("tools")) install.packages("tools")
 
 library(data.table)
 library(gganimate)
@@ -39,6 +40,7 @@ library(readr)
 library(sf)
 library(tidyr)
 library(tidyverse)
+library(tools)
 ```
 
 
@@ -110,7 +112,7 @@ shapefiles |>
 ```
 This tells us the date-range that each `district` shapefile corresponds to. The number in the filename represents the election cycle for that district. This will be useful for further analysis.
 
-# Task 3: Exploration of Vote Count Data
+# TASK 3: Exploration of Vote Count Data
 
 ## TASK 3.1: Flipped
 
@@ -304,29 +306,62 @@ To answer this question, let's first find the election mentioned above, then gro
 
 Let's group our `house` table on Candidate and Party.
 ```{r NY_2022_D12_[7], echo=TRUE, message=FALSE, warning=FALSE}
+#| code-fold: TRUE
 # Let's find this instance
 house |>
   filter(year==2022, state=="NEW YORK", district==12) |>
+  mutate(candidate = str_to_lower(candidate),
+         candidate = toTitleCase(candidate)) |>
   group_by(candidate) |>
   summarize(votes = sum(candidatevotes)) |>
   arrange(desc(votes))  |>
-  DT::datatable(options = list(pageLength = 5))
+  DT::datatable(
+    colnames = c("Candidate", "Votes"),
+    options = list(
+      pageLength = 7,
+      columnDefs = list(
+        list(
+          targets = c(2),
+          render = JS(
+            "function(data, type, row, meta) {",
+            "  return type === 'display' ? data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",
+            "}"
+          )
+        ))))
 
-# Find instance but also grouped on  'party' instead of candidate
+# Summarize the votes by Party rather than by Candidate
 house |>
   filter(year == 2022, state == "NEW YORK", district == 12) |>
+  mutate(party = tidyr::replace_na(party, "Blank/Write-In"),
+         party = str_to_lower(party),
+         party = toTitleCase(party)) |>
   group_by(party) |>
   summarize(votes = sum(candidatevotes)) |>
   arrange(desc(votes)) |>
-  DT::datatable(options = list(pageLength = 7))
+  DT::datatable(
+    colnames = c("Party", "Votes"),
+    options = list(
+      pageLength = 7,
+      columnDefs = list(
+        list(
+          targets = c(2),
+          render = JS(
+            "function(data, type, row, meta) {",
+            "  return type === 'display' ? data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",
+            "}"
+          )
+        ))))
 ```
 This is the sample from the prompt, both grouped by candidate name and their associated party(s).
 
 Let's answer this question by combining these two groupings.
 
 The collapsed code below looked for instances where:
+
 * The candidate who won got some vote percentage between 30% and 70% of total votes (so it's in a reasonable "flippable" range)
+
 * The candidate who won appeared on the ballot more than once
+
 * No party received more than 50% of the vote (If they did, then this question is moot)
 
 ```{r flipping_a_race_[8], echo=TRUE, message=FALSE, warning=FALSE}
@@ -372,7 +407,42 @@ house_votes <- house |> # Start with just the cols we want
 house_votes |>
   filter(year == 2000, state == "CONNECTICUT", district == 2) |>
   select(year, state, district, candidate, party, ballotcount, candidatevotes, pctvote_candidate, pctvote_party, max_pctvote_party, max_pctvote_candidate) |>
-  DT::datatable(options = list(pageLength = 3))
+  mutate(state = str_to_lower(state),
+         state = toTitleCase(state),
+         candidate = str_to_lower(candidate),
+         candidate = toTitleCase(candidate),
+         party = str_to_lower(party),
+         party = toTitleCase(party)) |>
+  rename_with(~ str_to_title(.x)) |>
+  rename("Party Received Highest % Votes in Election" = `Max_pctvote_party`,
+         "Candidate Received Highest % Votes in Election" = `Max_pctvote_candidate`,
+         "Candidate's % Votes in Election" = `Pctvote_candidate`,
+         "Party's % Vote in Election" = `Pctvote_party`,
+         "Number of Times Candidate Appears on Ballot" = `Ballotcount`,
+         "Candidate Votes" = `Candidatevotes`) |>
+  DT::datatable(options = list(pageLength = 3,
+                   columnDefs = list(
+                     # Adding commas for these columns
+                     list(
+                       targets = c(7),
+                       render = JS(
+                         "function(data, type, row, meta) {",
+                         "  return type === 'display' ? data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  # Adding commas
+                         "}"
+                       )
+                     ),
+                     # Formatting as percentages for columns 6, 9, and 10
+                     list(
+                       targets = c(8,9),
+                       render = JS(
+                         "function(data, type, row, meta) {",
+                         "  return type === 'display' ? (data * 100).toFixed(2) + '%' : data;",  # Formatting as percentage
+                         "}"
+                       )
+                     )
+                   )
+    )
+  )
 ```
 In Connecticut's 2nd District in 2000, Sam Gejdenson's Democratic party received the most votes, however candidate Rob Simmons on the Independent and Republican ticket won the vote by a razor-thin margin that required votes from both parties
 
@@ -448,19 +518,42 @@ summarized_data <- merged_states |>
 
 # Create the bar plot
 ggplot(summarized_data, aes(x = pctdiff_cat, y = n, fill = pctdiff_cat)) +
-  geom_bar(stat = "identity", show.legend = FALSE) +  # stat = "identity" uses the actual y-values
+  geom_bar(stat = "identity", show.legend = FALSE) +
   labs(
-    title = "Distribution of Percentage `Difference` Categories",
-    x = "pctdiff Category",
+    title = "Distribution of Percentage Difference",
+    x = "Percentage Difference of Presidential vs Representative Votes",
     y = "Count"
   ) +
   theme_minimal() +
-  scale_fill_manual(values = c("Low" = "darkgreen", "Medium" = "darkblue", "High" = "darkred"))  # Customize colors
+  theme(
+    plot.background = element_rect(fill = "gray", color = NA),
+    panel.background = element_rect(fill = "gray", color = NA), 
+    legend.background = element_rect(fill = "gray", color = NA),
+    plot.title = element_text(hjust = 0.5)                      
+  ) +
+  scale_fill_manual(values = c("Low" = "darkgreen", "Medium" = "darkblue", "High" = "darkred"))
 
 # These are the instances where there was a noticeable difference
 merged_states |>
   filter(pctdiff_cat %in% c("Medium","High")) |>
   arrange(desc(pctdiff)) |>
+  mutate(year = str_to_lower(year),
+         year = toTitleCase(year),
+         state = str_to_lower(state),
+         state = toTitleCase(state),
+         party = str_to_lower(party),
+         party = toTitleCase(party)) |>
+  rename_with(~ str_to_title(.x)) |>
+  rename(
+    "Party's Votes in State & Year for Presidential Election" = `Partyvotes_president`,
+    "Total Votes in State & Year for Presidential Election" = `Totalvotes_president`,
+    "Votes % in State & Year for Party in Presidential Election" = `Pctvotes_president`,
+    "Party's Votes in State & Year for Congressional Election" = `Partyvotes_house`,
+    "Total Votes in State & Year for Congressional Election" = `Totalvotes_house`,
+    "Votes % in State & Year for Party in Congressional Election" = `Pctvotes_house`,
+    "Percentage Difference in State & Year between Presidential and House Votes" = `Pctdiff`,
+    "Category of Percentage Difference in State & Year between Presidential and House Votes" = `Pctdiff_cat`
+  ) |>
   DT::datatable(
     options = list(
       pageLength = 18,
@@ -521,7 +614,7 @@ read_shp_from_zip <- function(file) {
 }
 ```
 
-# Task 5: Chloropleth Visualization of the 2000 Presidential Election Electoral College Results
+# TASK 5: Chloropleth Visualization of the 2000 Presidential Election Electoral College Results
 
 Here we create a *Chloropleth Visualization* of the 2000 Presidential Election between candidates Al Gore (D) and George W. Bush (R).
 
@@ -536,6 +629,7 @@ This was a particularly contentious election that was [famously decided by the S
 
 ```{r districts_files_[11], echo=TRUE, message=FALSE, warning=FALSE}
 # Find which file will have the 2000 election
+#| code-fold: TRUE
 files_dict <- read_csv("district_shapefiles.csv")
 
 files_dict |>
@@ -693,6 +787,10 @@ print(bush_v_gore_map)
 
 Having some trouble with the pop-outs for the EV's on smaller states, but it works.
 
+It's interesting to see how different regions voted in this election.
+
+The Northeast (sans New Hampshire), West Coast, and about half of the Midwest went to Vice President Gore, while President-Elect Bush received the other half of the Midwest, most of the Southwest (sans New Mexico), and the Southeast. The non-Continental U.S. split between Bush for Alaska and Gore for Hawaii.
+
 # TASK 6: Advanced Chloropleth Visualization of Electoral College Results
 
 For this next step, we just want to view the same map as from *Task 5* but for each year of the Presidential cycle.
@@ -786,7 +884,9 @@ animated_maps <- ggplot(states_shp,
 
 animate(animated_maps, renderer = gifski_renderer(file = "election_results_animation.gif"))
 ```
-Some things to work out with this, but it works.
+Some things to work out with this, but it works. A future goal is to add the **winner** from each year's election (Party + Candidate) but it's proved challenging so far.
+
+It is interesting to see how elections don't seem to have any consistency; regions that are deep-Red one year end up deep-Blue the next.
 
 # TASK 7: Evaluating Fairness of ECV Allocation Schemes
 
@@ -807,6 +907,7 @@ presidents |>
   group_by(party, state, year) |>
   summarize(votes = sum(candidatevotes)) |>
   filter(state == "NEW YORK", year == 2020) |>
+  rename_with(~ str_to_title(.x)) |>
   DT::datatable(options = list(
       pageLength = 2,
       columnDefs = list(
@@ -852,6 +953,7 @@ race_winners <- presidents |>
     electoral_votes = electoral_votes  # Replace with the correct column name from `evotes`
   )
 
+# Getting total votes and replacing NULLs
 race_winners <- race_winners |>
   rename(libertarian_votes = LIBERTARIAN,
          other_party_votes = OTHER) |>
@@ -871,6 +973,15 @@ yearly_winners <- race_winners |>
 # Are there any instances where the candidate who won the election didn't win the popular vote?
 yearly_winners |>
   filter(popular_vote_winner != ec_vote_winner) |>
+  rename(
+    "Year" = `year`,
+    "Democrat Votes" = `dem_votes`,
+    "Republican Votes" = `rep_votes`,
+    "Democrat ECVs Won" = `dem_evs`,
+    "Republican ECVs Won" = `rep_evs`,
+    "Popular Vote Winner" = `popular_vote_winner`,
+    "ECV Winner" = `ec_vote_winner`
+  ) |>
   DT::datatable(options = list(
       pageLength = 2,
       columnDefs = list(
@@ -936,6 +1047,22 @@ race_winners_adjusted |>
   filter(state %in% c("NEW YORK","CALIFORNIA","TEXAS","FLORIDA"), year == 2020) |>
   select(state, pct_dem,pct_rep,pct_lib,pct_oth,total_votes,
          electoral_votes,dem_evs,rep_evs,lib_evs,oth_evs) |>
+  mutate(
+    state = str_to_lower(state)
+  ) |>
+  rename(
+    "State" = `state`,
+    "Percentage Votes for Democrat Party" = `pct_dem`,
+    "Percentage Votes for Republican Party" = `pct_rep`,
+    "Percentage Votes for Libertarian Party" = `pct_lib`,
+    "Percentage Votes for Other Parties" = `pct_oth`,
+    "Total Votes" = `total_votes`,
+    "Electoral College Votes" = `electoral_votes`,
+    "Democrat Party ECVs Won" = `dem_evs`,
+    "Republican Party ECVs Won" = `dem_evs`,
+    "Libertarian Party ECVs Won" = `dem_evs`,
+    "Other Party ECVs Won" = `dem_evs`,
+  ) |>
   DT::datatable(
     options = list(pageLength = 4,
       columnDefs = list(
@@ -973,6 +1100,18 @@ Conversely, Republicans instead of winning all 38 votes from Texas and 29 from F
 race_winners_adjusted |>
   filter(lib_evs + oth_evs >= 1) |>
   select(state, year, electoral_votes, dem_evs, rep_evs, lib_evs, oth_evs) |>
+  mutate(
+    state = str_to_lower(state)
+  ) |>
+  rename(
+    "State" = `state`,
+    "Year" = `year`,
+    "Total Electoral College Votes" = `electoral_votes`,
+    "Democrat ECVs Won" = dem_evs,
+    "Republican ECVs Won" = rep_evs,
+    "Libertarian ECVs Won" = lib_evs,
+    "Other-Party ECVs Won" = oth_evs
+  ) |>
   DT::datatable()
 ```
 
@@ -988,6 +1127,18 @@ Keep in mind from the data-table that the "other" party here isn't neccesarily a
 race_winners_adjusted |>
   filter(lib_evs + oth_evs >= 1) |>
   select(state, year, electoral_votes, dem_evs, rep_evs, lib_evs, oth_evs) |>
+  mutate(
+    state = str_to_lower(state)
+  ) |>
+  rename(
+    "State" = `state`,
+    "Year" = `year`,
+    "Total Electoral College Votes" = `electoral_votes`,
+    "Democrat ECVs Won" = dem_evs,
+    "Republican ECVs Won" = rep_evs,
+    "Libertarian ECVs Won" = lib_evs,
+    "Other-Party ECVs Won" = oth_evs
+  ) |>
   DT::datatable()
 ```
 
@@ -998,10 +1149,51 @@ race_winners_adjusted |>
 presidents |>
   filter(state == "CALIFORNIA", year == 1992) |>
   group_by(candidate, party_detailed, party_simplified, candidatevotes, totalvotes) |>
-  summarize(pct_vote = round(candidatevotes / totalvotes,3)*100) |>
-  mutate(pct_ev = floor((pct_vote * 54)/100)) |>
+  summarize(pct_vote = round(candidatevotes / totalvotes,4)*100) |>
+  mutate(pct_ev = round((pct_vote * 54)/100,2),
+         candidate = str_to_lower(candidate),
+         candidate = toTitleCase(candidate),
+         candidate = tidyr::replace_na(candidate, "Blank/Write-In"),
+         party_detailed = str_to_lower(party_detailed),
+         party_detailed = toTitleCase(party_detailed),
+         party_detailed = tidyr::replace_na(party_detailed, "Blank/Write-In"),
+         party_simplified = str_to_lower(party_simplified),
+         party_simplified = toTitleCase(party_simplified)) |>
   ungroup() |>
-  arrange(desc(pct_vote))
+  arrange(desc(pct_vote)) |>
+  rename(
+    "Candidate" = `candidate`,
+    "Party" = `party_detailed`,
+    "Party Simplified" = `party_simplified`,
+    "Candidate Votes" = `candidatevotes`,
+    "Total Votes" = `totalvotes`,
+    "Candidate % of Total Votes" = `pct_vote`,
+    "Candidate % of ECVs" = `pct_ev`
+  ) |>
+  DT::datatable(
+    options = list(pageLength = 7,
+                   columnDefs = list(
+                     # Adding commas for these columns
+                     list(
+                       targets = c(4,5),
+                       render = JS(
+                         "function(data, type, row, meta) {",
+                         "  return type === 'display' ? data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  # Adding commas
+                         "}"
+                       )
+                     ),
+                     # Formatting as percentages for columns 6, 9, and 10
+                     list(
+                       targets = c(6,7),
+                       render = JS(
+                         "function(data, type, row, meta) {",
+                         "  return type === 'display' ? (data).toFixed(2) + '%' : data;",  # Formatting as percentage
+                         "}"
+                       )
+                     )
+                   )
+    )
+  )
 ```
 
 This makes sense -- Ross Perot was a famous third-party candidate in 1992. His Independent Party would have received 11 electoral votes from California in this election. In this system, he also won 8 electoral votes in New York and 11 in Texas in 1992.
@@ -1041,9 +1233,9 @@ ggplot(combined_data, aes(x = year, y = dem_totals, fill = dataset)) +
   geom_bar(stat = "identity", position = "identity", alpha = 0.65) +
   scale_fill_manual(values = c("Regular" = "darkblue", "Adjusted" = "darkgreen")) +
   labs(
-    title = "Democrat Total EVs in Elections",
+    title = "Democrat Total ECVs in Elections",
     x = "Year",
-    y = "Democratic Totals"
+    y = "Democrat Totals"
   ) +
   theme_minimal() +
   theme(
@@ -1057,7 +1249,7 @@ ggplot(combined_data, aes(x = year, y = rep_totals, fill = dataset)) +
   geom_bar(stat = "identity", position = "identity", alpha = 0.5) +
   scale_fill_manual(values = c("Regular" = "darkred", "Adjusted" = "darkgreen")) +
   labs(
-    title = "Republican Total EVs in Elections",
+    title = "Republican Total ECVs in Elections",
     x = "Year",
     y = "Republican Totals"
   ) +
@@ -1132,10 +1324,10 @@ Finally, the big question, does any election flip in this system?
 combined_ev_data <- evs_by_year |>
   left_join(evs_by_year_adjusted,
             by="year",suffix=c("_regular", "_adjusted")) |>
-  mutate(dem_diff = abs(dem_totals_regular - dem_totals_adjusted), # create differential cols
-         rep_diff = abs(rep_totals_regular - rep_totals_adjusted),
-         lib_diff = abs(lib_totals_regular - lib_totals_adjusted),
-         oth_diff = abs(oth_totals_regular - oth_totals_adjusted),
+  mutate(dem_diff = dem_totals_regular - dem_totals_adjusted, # create differential cols
+         rep_diff = rep_totals_regular - rep_totals_adjusted,
+         lib_diff = lib_totals_regular - lib_totals_adjusted,
+         oth_diff = oth_totals_regular - oth_totals_adjusted,
          new_winner = ifelse(winner_regular != winner_adjusted, 1, 0))
 
 
@@ -1146,6 +1338,29 @@ setcolorder(combined_ev_data, c("year","winner_regular","winner_adjusted","new_w
                                 "oth_totals_regular","oth_totals_adjusted","oth_diff")) # Set col order
 
 combined_ev_data |>
+  mutate(
+         winner_regular = str_to_lower(winner_regular),
+         winner_regular = toTitleCase(winner_regular),
+         winner_adjusted = str_to_lower(winner_adjusted),
+         winner_adjusted = toTitleCase(winner_adjusted)) |>
+  rename(
+    "Year" = `year`,
+    "Actual Winner" = `winner_regular`,
+    "Proportional ECVs Winner" = `winner_adjusted`,
+    "New Winner (0 = No, 1 = Yes)" = `new_winner`,
+    "Total Democrat ECVs" = `dem_totals_regular`,
+    "Adjusted Democrat ECVs" = `dem_totals_adjusted`,
+    "Difference in Democrat ECVs" = `rep_diff`,
+    "Total Republican ECVs" = `rep_totals_regular`,
+    "Adjusted Republican ECVs" = `rep_totals_adjusted`,
+    "Difference in Republican ECVs" = `rep_diff`,
+    "Total Libertarian ECVs" = `lib_totals_regular`,
+    "Adjusted Libertarian ECVs" = `lib_totals_adjusted`,
+    "Difference in Libertarian ECVs" = `lib_diff`,
+    "Total Other Party ECVs" = `oth_totals_regular`,
+    "Adjusted Other Party ECVs" = `oth_totals_adjusted`,
+    "Difference in Other Party ECVs" = `oth_diff`,
+  ) |>
   DT::datatable(options = list(pageLength = 12)) # Only 12 to display
 ```
 
