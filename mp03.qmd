@@ -55,9 +55,11 @@ house <- house <- read_csv("1976-2022-house.csv")
 # Read in manually downloaded data from presidential elections
 presidents <- read_csv("1976-2020-president.csv")
 
-head(house)
+head(house) |>
+  DT::datatable(options=list(pageLength=6))
 
-head(presidents)
+head(presidents) |>
+  DT::datatable(options=list(pageLength=6))
 ```
 Not much to see with the data as-is.
 
