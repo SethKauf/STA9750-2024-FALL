@@ -321,7 +321,7 @@ house |>
   DT::datatable(
     colnames = c("Candidate", "Votes"),
     options = list(
-      pageLength = 7,
+      pageLength = 5,
       columnDefs = list(
         list(
           targets = c(2),
@@ -604,7 +604,7 @@ merged_states |>
   group_by(state) |>
   summarize(count = n()) |>
   arrange(desc(count)) |>
-  DT::datatable(options=list(pageLength=2),
+  DT::datatable(options=list(pageLength=7),
                 caption = htmltools::tags$caption(
       style = "caption-side: top; text-align: center; font-weight: bold; font-size: 16px;",
       "Number of Times Party Race Was Significantly Different by State"))
