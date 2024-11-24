@@ -49,6 +49,8 @@ We download the dataset from [MIT Election Data Science Lab](https://electionlab
 for the [U.S. House of Representatives](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/IG0UN2) and [the President](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/42MVDX) manually.
 
 An election range of 1976 - 2022 for the House and 1976 - 2020 for the Presidency helps us keep a reasonable range to the "modern era" of U.S. Elections.
+
+The below datatables are un-altered from the original data pull. Further tables will display with proper formatting and data cleaning.
 ```{r load_in_data_[1], echo=FALSE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
 # Read in manually downloaded data from congressional elections
@@ -265,7 +267,8 @@ Taking a quick look at New York's Electoral Votes over time for New York.
 ```{r ny_evotes_[5], echo=TRUE, message=FALSE, warning=FALSE}
 # View New York's electoral votes over the decades
 evotes |>
-  filter(state == "NEW YORK", year %in% c(1980, 2000, 2020))
+  filter(state == "NEW YORK", year %in% c(1980, 2000, 2020)) |>
+  DT::datatable(options=list(pageLength=3))
 ```
   
 And finally, a line graph of all 50 States' Electoral Votes + DC
@@ -584,14 +587,27 @@ merged_states |>
 merged_states |>
   filter(pctdiff_cat == "Medium") |>
   group_by(party) |>
-  summarize(n())
+  summarize(Count = n()) |>
+  mutate(
+    party = str_to_lower(party),
+    party = toTitleCase(party)
+  ) |>
+  rename(Party = `party`) |>
+  DT::datatable(options=list(pageLength=2),
+                caption = htmltools::tags$caption(
+      style = "caption-side: top; text-align: center; font-weight: bold; font-size: 16px;",
+      "Number of Times Party Race Was Significantly Different by Party"))
 
 # Diff by states
 merged_states |>
   filter(pctdiff_cat == "Medium") |>
   group_by(state) |>
   summarize(count = n()) |>
-  arrange(desc(count))
+  arrange(desc(count)) |>
+  DT::datatable(options=list(pageLength=2),
+                caption = htmltools::tags$caption(
+      style = "caption-side: top; text-align: center; font-weight: bold; font-size: 16px;",
+      "Number of Times Party Race Was Significantly Different by State"))
 ```
 We see that, although it has *somewhat* happened, a district will usually vote the same along party-lines for any given election, with few exceptions.
 
@@ -628,12 +644,13 @@ This was a particularly contentious election that was [famously decided by the S
 </figure>
 
 ```{r districts_files_[11], echo=TRUE, message=FALSE, warning=FALSE}
-# Find which file will have the 2000 election
 #| code-fold: TRUE
+
+# Find which file will have the 2000 election
 files_dict <- read_csv("district_shapefiles.csv")
 
 files_dict |>
-  DT::datatable(options=list(pageLength = -1))
+  DT::datatable(options=list(pageLength = 7))
 ```
 Reviewing the district shape files...
 ```{r Mapping_2000_[12], echo=TRUE, message=FALSE, warning=FALSE}
@@ -907,6 +924,12 @@ presidents |>
   group_by(party, state, year) |>
   summarize(votes = sum(candidatevotes)) |>
   filter(state == "NEW YORK", year == 2020) |>
+  mutate(
+    party = str_to_lower(party),
+    party = toTitleCase(party),
+    state = str_to_lower(state),
+    state = toTitleCase(state)
+  ) |>
   rename_with(~ str_to_title(.x)) |>
   DT::datatable(options = list(
       pageLength = 2,
@@ -1101,7 +1124,8 @@ race_winners_adjusted |>
   filter(lib_evs + oth_evs >= 1) |>
   select(state, year, electoral_votes, dem_evs, rep_evs, lib_evs, oth_evs) |>
   mutate(
-    state = str_to_lower(state)
+    state = str_to_lower(state),
+    state = toTitleCase(state)
   ) |>
   rename(
     "State" = `state`,
@@ -1128,7 +1152,8 @@ race_winners_adjusted |>
   filter(lib_evs + oth_evs >= 1) |>
   select(state, year, electoral_votes, dem_evs, rep_evs, lib_evs, oth_evs) |>
   mutate(
-    state = str_to_lower(state)
+    state = str_to_lower(state),
+    state = toTitleCase(state)
   ) |>
   rename(
     "State" = `state`,
@@ -1324,10 +1349,10 @@ Finally, the big question, does any election flip in this system?
 combined_ev_data <- evs_by_year |>
   left_join(evs_by_year_adjusted,
             by="year",suffix=c("_regular", "_adjusted")) |>
-  mutate(dem_diff = dem_totals_regular - dem_totals_adjusted, # create differential cols
-         rep_diff = rep_totals_regular - rep_totals_adjusted,
-         lib_diff = lib_totals_regular - lib_totals_adjusted,
-         oth_diff = oth_totals_regular - oth_totals_adjusted,
+  mutate(dem_diff = dem_totals_adjusted - dem_totals_regular, # create differential cols
+         rep_diff = rep_totals_adjusted - rep_totals_regular,
+         lib_diff = lib_totals_adjusted - lib_totals_regular,
+         oth_diff = oth_totals_adjusted - oth_totals_regular,
          new_winner = ifelse(winner_regular != winner_adjusted, 1, 0))
 
 
@@ -1350,7 +1375,7 @@ combined_ev_data |>
     "New Winner (0 = No, 1 = Yes)" = `new_winner`,
     "Total Democrat ECVs" = `dem_totals_regular`,
     "Adjusted Democrat ECVs" = `dem_totals_adjusted`,
-    "Difference in Democrat ECVs" = `rep_diff`,
+    "Difference in Democrat ECVs" = `dem_diff`,
     "Total Republican ECVs" = `rep_totals_regular`,
     "Adjusted Republican ECVs" = `rep_totals_adjusted`,
     "Difference in Republican ECVs" = `rep_diff`,
