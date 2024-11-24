@@ -6,7 +6,7 @@ jyml:
 
 Hi all, my name is Seth, I'm in the MS Statistics program at Baruch.
 
-I have some data science experience having taken a bootcamp in 2021 and having worked in the field since completing it.
+I have some data science experience completing a bootcamp in 2021 and working in the field since then.
 
 I'm in 3 classes this semester, one of which is making me learn and write a lot of math notation in markdown real fast, $\log\times\Pr[D_{train}]=\prod_{i=1}^n(f_1(x_i)^{y_i} \times f_0(x_i)^{1-y_i})\times\log=\sum_{i=1}^n\log(f_1(x_i)^{y_i}\times f_0(x_i)^{1-y_i})$ was a fun one. $k\in\Re$ looks pretty cool, too.
 
