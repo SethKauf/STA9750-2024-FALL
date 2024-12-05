@@ -8,4 +8,564 @@ CUNY Retirement Plans
 
 # Introduction
 
-More to come soon on MP 04.
+
+## Task 00: Install Packages and Libraries
+```{r install-packages_[1], echo=TRUE, message=FALSE, warning=FALSE}
+if (!require("data.table")) install.packages("data.table")
+if (!require("dotenv")) install.packages("dotenv")
+if (!require("dplyr")) install.packages("dplyr")
+if (!require("DT")) install.packages("DT")
+if (!require("glue")) install.packages("glue")
+if (!require("httr2")) install.packages("httr2")
+if (!require("tidyr")) install.packages("tidyr")
+if (!require("tidyverse")) install.packages("tidyverse")
+if (!require("tools")) install.packages("tools")
+
+library(data.table)
+library(dotenv)
+library(dplyr)
+library(DT)
+library(glue)
+library(httr2)
+library(tidyr)
+library(tidyverse)
+library(tools)
+```
+
+```{r its_a_secret_to_everybody_[2], echo=FALSE, message=TRUE, warning=FALSE}
+# API Keys are stored in a .secret file
+# this line of code is view-able in GitHub but not on the project itself
+# for somewhat obvious reasons
+dotenv::load_dot_env(".secrets")
+```
+
+## Task 01: Register for AlphaVantage API Key
+```{r alpha_key_[3], echo=FALSE, message=TRUE, warning=FALSE}
+# Key has been registeted previously
+alpha_api_key <- Sys.getenv("ALPHA_API_KEY")
+```
+
+## Task 02: Register for FRED API Key
+```{r fred_key_[4], echo=FALSE, message=FALSE, warning=FALSE}
+# Key has been registeted previously
+fred_api_key <- Sys.getenv("FRED_API_KEY")
+```
+
+
+## Task 03: Data Acquisition
+
+Pulling in data on:
+
+* Inflation
+  - FRED
+* Wage Growth
+  - FRED
+* US Equity Market total returns
+  - AlphaVantage
+* International Equity Market total returns
+  - AlphaVantage
+* Bond market total returns
+  - FRED
+* Short-term debt returns
+  - FRED
+
+
+```{r}
+# Creating a request and clean function for FRED Data
+series_url = "https://api.stlouisfed.org/fred/series/observations?series_id="
+
+get_fred_data <- function(url,series_id,api_key){
+  
+  lookup_url <- paste0(url,series_id,"&api_key=",api_key,"&file_type=json")
+  
+  req <- request(lookup_url)
+  
+  resp <- req_perform(req)
+  
+  data <- resp_body_json(resp)
+  
+  df <- data$observations
+  
+  return(df)
+}
+```
+
+
+
+
+
+
+```{r}
+# Creating a similar function for Alpha Data
+
+base_alpha_url <- "https://www.alphavantage.co/query"
+
+get_alpha_data <- function(url,lookup_symbol,api_key){
+  req <- request(url) |>
+    req_url_query(
+      `function` = "TIME_SERIES_DAILY",
+      symbol=lookup_symbol,
+      interval = "60min",
+      apikey = alpha_api_key,
+      outputsize = "full"
+    )
+  
+  resp <- req_perform(req)
+  
+  data <- resp_body_json(resp)
+  
+  time_series <- data$`Time Series (Daily)`
+  
+  # Convert to dataframe
+  df <- do.call(rbind, lapply(time_series, function(row) {
+    as.data.frame(t(row), stringsAsFactors = FALSE)
+  }))
+  
+  df$Date <- rownames(time_series)
+  
+  df <- rownames_to_column(df, var = "Date")
+  
+  # Remove the row names
+  rownames(df) <- NULL
+  
+  # Ensure the Date column is in Date format
+  df$Date <- as.Date(df$Date)
+  
+  df <- df |>
+    rename(`open` = `1. open`,
+           `high` = `2. high`,
+           `low` = `3. low`,
+           `close` = `4. close`,
+           `volume` = `5. volume`)
+  
+  df <- df |>
+    mutate(
+      open = as.numeric(open),
+      high = as.numeric(high),
+      low = as.numeric(low),
+      close = as.numeric(close),
+      volume = as.numeric(volume)
+    )
+  
+  # Create YearMonth column and calculate medians
+  medians <- df |>
+    mutate(YearMonth = format(Date, "%Y-%m")) |>
+    group_by(YearMonth) |>
+    summarize(across(
+      c(open, high, low, close, volume),
+      median,
+      na.rm = TRUE
+    )) |>
+    ungroup()
+  
+  return(medians)
+  }
+
+```
+
+### 3a. Inflation Data
+
+```{r}
+
+# Pulling this data from the FRED website
+# If you look up the series ID in FRED, you can directly access the data and download its .CSV file there
+
+inflation_series_id = "FPCPITOTLZGUSA"
+
+inflation_df <- get_fred_data(url=series_url,series_id=inflation_series_id,api_key=fred_api_key)
+
+clean_inflation_df <- data.frame(
+  DATE = sapply(inflation_df, function(x) x$date),
+  inflation_rate = as.numeric(sapply(inflation_df, function(x) x$value))
+)
+
+clean_inflation_df <- clean_inflation_df |>
+  mutate(year = substr(DATE,start=0,stop=4),
+         inflation_rate = round(inflation_rate,3),
+         yoy_diff = round(inflation_rate - lag(inflation_rate),2),
+         yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)
+         ) |>
+  select(`Year` = year,
+         `Inflation Rate` = inflation_rate,
+         `YoY Differential` = yoy_diff)
+
+clean_inflation_df |>
+  DT::datatable()
+
+print(glue("The Inflation Dataset covers a year range of {min(clean_inflation_df$Year)} to {max(clean_inflation_df$Year)}"))
+```
+
+
+### 3b. Wage Data
+
+Note: This data spans from January 1983 through October 2024. However, there are two date ranges where there is no recorded data: July 1985 - September 1986 (14 months) and June 1995 - August 1996 (14 months). This is "[...due to changes in methodology.](https://fred.stlouisfed.org/series/FRBATLWGTUMHWG83O)"
+
+```{r}
+wage_series_id = "FRBATLWGTUMHWG83O"
+
+wage_df <- get_fred_data(url=series_url,series_id=wage_series_id,api_key=fred_api_key)
+
+clean_wage_df <- data.frame(
+  DATE = sapply(wage_df, function(x) x$date),
+  wage_growth = as.numeric(sapply(wage_df, function(x) x$value))
+)
+
+
+clean_wage_df <- clean_wage_df |>
+  mutate(year = substr(DATE,start=0,stop=4)) |>
+  group_by(year) |>
+  summarize(
+    mwg = round(median(wage_growth, na.rm = TRUE), 1),
+    null_months = sum(is.na(wage_growth)) # Count of NULL months
+  ) |>
+  ungroup() |>
+  mutate(yoy_diff = round(mwg - lag(mwg),2),
+         yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)) |>
+  select(
+    `Year`= year,
+    `NULL Month Count` = null_months,
+    `Median Wage Growth` = mwg,
+    `YoY Differential` = yoy_diff
+  )
+
+clean_wage_df |>
+  DT::datatable()
+
+print(glue("The Wage Dataset covers a year range of {min(clean_wage_df$Year)} to {max(clean_wage_df$Year)}"))
+```
+
+### 3c. U.S. Equity Market Total Returns (Lookup Symbol = SPY)
+
+```{r}
+us_monthly_medians <- get_alpha_data(url=base_alpha_url,lookup_symbol="SPY",api_key=alpha_api_key)
+
+us_monthly_medians <- us_monthly_medians |>
+  mutate(
+    year = substr(YearMonth,start=0,stop=4)
+  ) |>
+  group_by(year) |>
+  summarize(across(
+    c(open, high, low, close, volume),
+    median,
+    na.rm = TRUE
+  )) |>
+  ungroup() |>
+  mutate(
+    open = round(open,2),
+    high = round(high, 2),
+    low = round(low, 2),
+    close = round(close, 2),
+    high_low_diff = round(high - low, 2),
+    open_close_diff = round(open - close, 2),
+    yoy_diff = round(volume - lag(volume),2),
+    yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)
+  ) |>
+  select(
+    `Year` = year,
+    `Open` = open,
+    `Close` = close,
+    `High` = high,
+    `Low` = low,
+    `Traded Volume` = volume,
+    `YoY Volume Difference` = yoy_diff
+  )
+
+us_monthly_medians |>
+  DT::datatable()
+
+print(glue("The US Equity Market Dataset covers a year range of {min(us_monthly_medians$Year)} to {max(us_monthly_medians$Year)}"))
+```
+
+### 3d. International Equity Market Total Returns (Lookup Symbol = VXUS)
+```{r}
+intl_monthly_medians <- get_alpha_data(url=base_alpha_url,lookup_symbol="VXUS",api_key=alpha_api_key)
+
+intl_monthly_medians <- intl_monthly_medians |>
+  mutate(
+    year = substr(YearMonth,start=0,stop=4)
+  ) |>
+  group_by(year) |>
+  summarize(across(
+    c(open, high, low, close, volume),
+    median,
+    na.rm = TRUE
+  )) |>
+  ungroup() |>
+  mutate(
+    open = round(open,2),
+    high = round(high, 2),
+    low = round(low, 2),
+    close = round(close, 2),
+    high_low_diff = round(high - low, 2),
+    open_close_diff = round(open - close, 2),
+    yoy_diff = round(volume - lag(volume),2),
+    yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)
+  ) |>
+  select(
+    `Year` = year,
+    `Open` = open,
+    `Close` = close,
+    `High` = high,
+    `Low` = low,
+    `Traded Volume` = volume,
+    `YoY Volume Difference` = yoy_diff
+  )
+
+print(glue("The International Equity Market Dataset covers a year range of {min(intl_monthly_medians$Year)} to {max(intl_monthly_medians$Year)}"))
+```
+
+### 3e. Bond Returns
+
+```{r}
+bond_series_id = "BAMLCC0A4BBBTRIV"
+
+bond_df <- get_fred_data(url=series_url,series_id=bond_series_id,api_key=fred_api_key)
+
+bond_df
+
+clean_bond_df <- data.frame(
+  DATE = sapply(bond_df, function(x) x$date),
+  bond = as.numeric(sapply(bond_df, function(x) x$value))
+)
+
+clean_bond_df <- clean_bond_df |>
+  mutate(year = substr(DATE,start=0,stop=4)) |>
+  group_by(year) |>
+  summarize(
+    median_bond_price = median(bond, na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  mutate(yoy_diff = round(median_bond_price - lag(median_bond_price),2),
+         yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)) |>
+  select(
+    `Year`= year,
+    `Median Bond Price` = median_bond_price,
+    `YoY Differential` = yoy_diff
+  )
+
+clean_bond_df |>
+  DT::datatable()
+```
+
+
+### 3f. Short-Term Debt Returns
+
+```{r}
+short_term_debt_series_id = "QFRD304INFUSNO"
+
+short_term_debt_df <- get_fred_data(url=series_url,series_id=short_term_debt_series_id,api_key=fred_api_key)
+
+clean_short_term_debt_df <- data.frame(
+  DATE = sapply(short_term_debt_df, function(x) x$date),
+  quarterly_financials = as.numeric(sapply(short_term_debt_df, function(x) x$value))
+)
+
+clean_short_term_debt_df <- clean_short_term_debt_df |>
+  mutate(year = substr(DATE,start=0,stop=4)) |>
+  group_by(year) |>
+  summarize(
+    annual_financials = round(median(quarterly_financials, na.rm = TRUE), 1)
+  ) |>
+  mutate(yoy_diff = round(annual_financials - lag(annual_financials),2),
+         yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)) |>
+  ungroup() |>
+  select(
+    `Year` = year,
+    `Annual Financials` = annual_financials,
+    `YoY Differential` = yoy_diff
+  )
+
+clean_short_term_debt_df |>
+  DT::datatable()
+```
+
+
+## Task 04: Initial Analysis
+There are now 6 datasets to look into.
+
+The first step is to do some EDA. We could look at the data as a whole or compare like-to-like.
+
+This divides our data into three groups: Inflation + Wages, US + International Markets, and Bond + Short-Term Debt.
+
+There are two reasons for this: the first is these compare similar indicators to each other. The second is the date ranges are different across the board, so throwing everything into a single table and graph would just look messy.
+
+First up, let's look at how both Inflation and Wages have changed over the years. The first graph compares the Rate of Inflation to the Median Wage Growth per year. The second shows the Year-over-year differential between 
+
+```{r}
+# dropping NULL month count from wages since it won't really apply to any further analysis
+wgs <- clean_wage_df |>
+  select(
+    -`NULL Month Count`
+  )
+
+# join dfs on year, this will shorten the overall date range to 1983-2023 (40 year span)
+infl_wgs_df <- clean_inflation_df |>
+  inner_join(wgs, by = "Year") |>
+  select(
+    `Year`,
+    `Inflation Rate`,
+    `YoY Inflation Differential` = `YoY Differential.x`,
+    `Median Wage Growth`,
+    `YoY Wages Differential` = `YoY Differential.y`
+  ) |>
+  mutate(
+    `YoY Inflation Differential` = if_else(
+      Year == 1983, 0, `YoY Inflation Differential` # Since it's cutting off a portion of the inflation dataset...
+    )
+  )
+
+# quick look at the table
+infl_wgs_df |>
+  DT::datatable()
+```
+
+```{r}
+# Ensure Year is numeric
+infl_wgs_df$Year <- as.numeric(as.character(infl_wgs_df$Year))
+
+# Inflation Rate and Median Wage Growth Plot
+inflation_wage_plot <- ggplot(infl_wgs_df, aes(x = Year)) +
+  geom_line(aes(y = `Inflation Rate`, color = "Inflation Rate"), size = 1) +
+  geom_line(aes(y = `Median Wage Growth`, color = "Median Wage Growth"), size = 1) +
+  scale_color_manual(values = c("Inflation Rate" = "darkblue", "Median Wage Growth" = "#44b80a")) +
+  labs(
+    title = "Inflation Rate and Median Wage Growth (1983-2023)",
+    x = "Year",
+    y = "Rate (%)",
+    color = "Legend"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "top"
+  ) +
+  scale_x_continuous(breaks = seq(1960, 2024, by = 10)) +
+  scale_y_continuous()
+
+print(inflation_wage_plot)
+```
+
+```{r}
+infl_wgs_yoy_plot <- ggplot(infl_wgs_df, aes(x = Year)) +
+  geom_line(aes(y = `YoY Inflation Differential`, color = "Inflation Differential"), size = 1) +
+  geom_line(aes(y = `YoY Wages Differential`, color = "Wage Differential"), size = 1) +
+  scale_color_manual(values = c("Inflation Differential" = "darkblue", "Wage Differential" = "#44b80a")) +
+  labs(
+    title = "YoY Differentials (1983-2023)",
+    x = "Year",
+    y = "Differential (%)",
+    color = "Legend"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "top"
+  ) +
+  scale_x_continuous(breaks = seq(1960, 2024, by = 10)) +
+  scale_y_continuous() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray") # Centered at 0
+
+print(infl_wgs_yoy_plot)
+```
+
+Market Dataframe and Plots
+
+```{r}
+market_df <- us_monthly_medians |>
+  inner_join(intl_monthly_medians, by = "Year", suffix = c("_US", "_Intl")) |>
+  mutate(
+    Avg_Price_US = (High_US + Low_US) / 2,
+    Avg_Price_Intl = (High_Intl + Low_Intl) / 2
+  ) |>
+  select(
+    `Year`,
+    `Average Price U.S. Markets` = `Avg_Price_US`, # decided to go with the average
+    `Traded Volume US` = `Traded Volume_US`,
+    `Average Price International Markets` = `Avg_Price_Intl`,
+    `Traded Volume Intl` = `Traded Volume_Intl`
+  )
+
+market_df |>
+  DT::datatable()
+```
+
+
+```{r}
+market_df$Year <- as.numeric(as.character(market_df$Year))
+
+ggplot(market_df, aes(x = Year)) +
+  geom_line(aes(y = `Average Price U.S. Markets`, color = "U.S. Markets"), size = 1) +
+  geom_line(aes(y = `Average Price International Markets`, color = "International Markets"), size = 1) +
+  scale_color_manual(values = c("U.S. Markets" = "darkblue", "International Markets" = "#44b80a")) +
+  labs(
+    title = "Average Price by Year (U.S. and International Markets)",
+    x = "Year",
+    y = "Average Price",
+    color = "Market"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+# Transform data to long format for plotting for bar graph
+volume_data <- market_df |>
+  pivot_longer(
+    cols = c(`Traded Volume US`, `Traded Volume Intl`),
+    names_to = "Market",
+    values_to = "Traded Volume"
+  ) |>
+  mutate(Market = recode(Market, 
+                         `Traded Volume US` = "U.S. Markets",
+                         `Traded Volume Intl` = "International Markets"))
+
+# Overlaid bar graph
+ggplot(volume_data, aes(x = Year, y = `Traded Volume`, fill = Market)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("U.S. Markets" = "darkblue", "International Markets" = "#44b80a")) +
+  scale_y_continuous(
+    labels = scales::comma, # Format Y-axis with commas
+    expand = c(0, 0)        # Remove extra space at the bottom of the bars
+  ) +
+  scale_x_continuous(
+    breaks = seq(2011, 2023, by = 1), 
+    limits = c(2011, 2023)           
+  ) +
+  labs(
+    title = "Traded Volume by Year (U.S. and International Markets)",
+    x = "Year",
+    y = "Traded Volume",
+    fill = "Market"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1), 
+    plot.background = element_rect(fill = "gray", color = NA), 
+    panel.background = element_rect(fill = "gray", color = NA) 
+  )
+```
+
+
+
+## Task 05: Historical Comparison
+
+Now we'll compare the two plans, TRS and ORP, to get a sense of how each performs, for a CUNY employee who joined in the first month of the historical data.
+
+
+
+
+## Task 06: Fixed-Rate Analysis
+
+
+
+
+
+
+## Task 07: Monte-Carlo Analysis
+
+
+
+
+# Conclusion
+
