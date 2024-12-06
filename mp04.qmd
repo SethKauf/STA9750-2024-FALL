@@ -659,7 +659,7 @@ working_bob_plot <- working_bob_plot +
 # make it interactive
 bobs_working_plot <- ggplotly(working_bob_plot, tooltip = "text")
 
-print(bobs_working_plot)
+bobs_working_plot
 ```
 
 The exact math behind each retirement package can get a little tricky. For TRS, first, employees pay a fixed percentage of their paycheck into the pension fund based on their AGI.
@@ -722,9 +722,8 @@ working_bob |>
 
 Then, the retirement benefit is calculated based on a *Final Average Salary*, which computes the average of the final 3 years salary for an employee to use in a calculation, which also factors in the number of years an employee worked for Baruch.
 
-For Bob, that is:
-
 ```{r bobs-fas_[23], echo=FALSE, message=FALSE, warning=FALSE}
+#| code-fold: TRUE
 # Bob's FAS
 
 bobs_fas <- sum(tail(working_bob$Income,3))/3
@@ -736,9 +735,423 @@ Knowing this, we can calculate Bob's annual retirement benefit from CUNY, includ
 
 What this means is, the benefit amount is increased annually in-line with the rate of inflation; the exact calculation halves the rate of inflation then rounds-up to the nearest tenth, for example a 2.9% rate of inflation divided by 2 and rounded up to the nearest-tenth returns a 1.5% annual increase. However, the increase exists within a band of 1-3% and can not exceed that band on either end.
 
+```{r bobs-yearly-rate_[24], echo=FALSE, message=FALSE, warning=FALSE}
+#| code-fold: TRUE
+### function for trs' fas calculation
+trs_fas_calculation <- function(years,fas){
+  case_when(
+    years < 20 ~ (0.0167 * fas * years)/12,
+    years == 20 ~ (0.0175 * fas * years)/12,
+    years > 20 ~ ((0.35 + 0.02 * years) * fas)/12
+  )
+}
+
+# starting pension
+initial_savings_from_work <- sum(working_bob$bobs_contributions, na.rm = TRUE)
+
+initial_savings_from_work
+
+# calculating cuny's starting contribution
+cuny_first_contribution <- trs_fas_calculation(30,bobs_fas)
+
+cuny_first_contribution
+
+
+trs_infl_adj <- function(infl){
+  adj = round((infl*50),1)/100
+  case_when(
+    adj < 0.01 ~ 0.01,
+    adj > 0.03 ~ 0.03,
+    TRUE ~ adj
+  )
+}
+
+
+# Bob's retirement pension
+retirement_bob <- clean_inflation_df |>
+  filter(Year >= 2014) |>
+  rename(
+    infl_rt = `Inflation Rate`,
+    yoy_infl_diff = `YoY Differential`
+  ) |>
+  mutate(
+    infl_rt = infl_rt / 100,
+    yoy_infl_diff = yoy_infl_diff / 100
+  ) |>
+  mutate(
+    cpi = trs_infl_adj(infl_rt)
+  ) |>
+  mutate(
+    # Initialize columns
+    starting_pension = if_else(Year == 2014, initial_savings_from_work, NA_real_),
+    contribution = if_else(Year == 2014, cuny_first_contribution, NA_real_),
+    ending_pension = initial_savings_from_work + cuny_first_contribution
+  )
+
+for (i in 2:nrow(retirement_bob)){
+  retirement_bob$contribution[i] = (retirement_bob$contribution[i] <- retirement_bob$contribution[i-1] +
+                                      (retirement_bob$contribution[i - 1] * retirement_bob$cpi[i]))
+  
+  retirement_bob$starting_pension[i] = retirement_bob$ending_pension[i - 1]
+  
+  retirement_bob$ending_pension[i] = retirement_bob$starting_pension[i] + retirement_bob$contribution[i]
+}
+
+
+retirement_bob <- retirement_bob |>
+  mutate(
+    monthly_pension = ((starting_pension + ending_pension) / 24), # Divide by 2 to get the yearly average, divide by 12 to get the monthly average
+    pension_increase = if_else(row_number()==1,0.0,(monthly_pension - lag(monthly_pension))),
+    monthly_contribution = (contribution / 12),
+    contribution_increase = if_else(row_number()==1,0.0,round((contribution - lag(contribution)),2)),
+    contribution_pct_increase = if_else(row_number()==1,0.0,((contribution - lag(contribution))/lag(contribution))) #  this should just mirror the CPI as a check
+  )
+
+retirement_bob |>
+  mutate(
+    ending_pension = round(ending_pension,2),
+    monthly_pension = round(monthly_pension,2),
+    contribution = round(contribution,2),
+    monthly_contribution = round(monthly_contribution,2)
+  ) |>
+  select(
+    Year,
+    `End of Year Pension` = ending_pension,
+    `Monthly Available Pension` = monthly_pension,
+    `Yearly Contribution` = contribution,
+    `Monthly Contribution` = monthly_contribution
+  ) |>
+  DT::datatable(
+    options = list(pageLength = 10,
+                   columnDefs = list(
+                     # Adding commas for these columns
+                     list(
+                       targets = c(2,3,4,5),
+                       render = JS(
+                         "function(data, type, row, meta) {",
+                         "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  
+                         "}"
+                       )
+                     )
+                   )
+    )
+  )
+
+print(glue("CUNY's average monthly contribution to Bob's account since 2014 is {dollar(mean(retirement_bob$monthly_contribution))}.\nThe average Monthly Available Pension since 2014 is {dollar(mean(retirement_bob$monthly_pension))}."))
+
+```
+
+Bob is left with a neat monthly contribution from CUNY of $1,215.74 on average since 2014, and has an available pension of \$22,324.85 to withdraw from.
+
+Let's check if Bob's monthly available pension over the past decade would've been greater if he went with the ORP instead of TRS.
+
+Bob joined CUNY Baruch at Age 35.
+
+He worked from 1983 - 2013 (30 years) with a starting salary of $52,267.
+
+The ORP method is an account on an Index or Fund that Bob can contribute to with various contribution levels and asset allocations depending on age and income. Finally, it also has an employer (CUNY) contribution of 8% for the first seven years of employment, then 10% every year after (so 23 years for Bob at 10%).
+
+NOTE: Due to the fact the data on US Markets, International Markets, U.S. Bonds, and Short-Term Debt do not completely go back to 1983 (with International Markets only being tracked under the *VXUS* symbol since 2011), I have used a resampling method to generate dummy historical data to fill in the gap. Please keep this in mind while proceeding through Task 5.
+
+```{r hypothetical-bob_[25], echo=FALSE, message=FALSE, warning=FALSE}
+#| code-fold: TRUE
+
+# ORP Method
+
+bobs_age <- 40
+
+opr_bob <- working_bob |>
+  select(
+    Year,
+    mwg,
+    income = Income
+  ) |>
+  mutate(
+    age = if_else(row_number()==1,bobs_age,NA_real_)
+  )
+
+for (i in 2:nrow(opr_bob)){
+  opr_bob$age[i] = opr_bob$age[i - 1] + 1
+}
+
+# need US Market, International Market, and Bonds data
+
+# have to create dummy historical data
+
+### US Market
+us_mkt <- us_monthly_medians |>
+  mutate(
+    avg_price = round((Open + Close)/2,2)
+  ) |>
+  select(
+    Year,
+    avg_price
+  )
+
+# Define the range of historical years
+historical_years <- data.frame(Year = 1983:1998)
+
+# Resample avg_price values for market data
+set.seed(42)
+
+historical_data <- historical_years |>
+  mutate(avg_price = sample(us_mkt$avg_price, size = nrow(historical_years), replace = TRUE))
+
+us_mkt$Year <- as.numeric(as.character(us_mkt$Year))
+
+# Combine historical and existing data
+extended_us_mkt_data <- bind_rows(historical_data, us_mkt)
+
+filtered_us_mkt_data <- extended_us_mkt_data |>
+  filter(Year <= 2013)
+
+### Intl Market
+intl_mkt <- intl_monthly_medians |>
+  mutate(
+    avg_price = round((Open + Close)/2,2)
+  ) |>
+  select(
+    Year,
+    avg_price
+  )
+
+# Define the range of historical years
+historical_years <- data.frame(Year = 1983:2010)
+
+historical_data <- historical_years |>
+  mutate(avg_price = sample(intl_mkt$avg_price, size = nrow(historical_years), replace = TRUE))
+
+intl_mkt$Year <- as.numeric(as.character(intl_mkt$Year))
+
+# Combine historical and existing data
+extended_intl_mkt_data <- bind_rows(historical_data, intl_mkt) 
+
+filtered_intl_mkt_data <- extended_intl_mkt_data |>
+  filter(Year <= 2013)
 
 
 
+### Bonds
+
+bonds <- clean_bond_df |>
+  select(
+    Year,
+    median_bond_price = `Median Bond Price`
+  )
+
+# Define the range of historical years
+historical_years <- data.frame(Year = 1983:1987)
+
+historical_data <- historical_years |>
+  mutate(median_bond_price = sample(bonds$median_bond_price, size = nrow(historical_years), replace = TRUE))
+
+bonds$Year <- as.numeric(as.character(bonds$Year))
+
+# Combine historical and existing data
+extended_bonds_data <- bind_rows(historical_data, bonds)
+
+filtered_bonds_data <- extended_bonds_data |>
+  filter(Year <= 2013)
+
+### Short-Term Debt
+
+debts <- clean_short_term_debt_df |>
+  select(
+    Year,
+    avg_price = `Annual Financials`
+  )
+
+historical_years <- data.frame(Year = 1983:2008)
+
+historical_data <- historical_years |>
+  mutate(avg_price = sample(debts$avg_price, size = nrow(historical_years), replace = TRUE))
+
+debts$Year <- as.numeric(as.character(debts$Year))
+
+# Combine historical and existing data
+extended_debts_data <- bind_rows(historical_data, debts) |>
+  rename(
+    avg_debts_price = avg_price
+  )
+
+filtered_debts_data <- extended_debts_data |>
+  filter(Year <= 2013)
+
+### combine everything
+
+opr_cont <- function(years_worked,income){
+  case_when(
+    years_worked <= 7 ~ case_when(
+      income <= 45000 ~ 0.03 * income + (0.08 * income),
+      income <= 55000 ~ 0.035 * income + (0.08 * income),
+      income <= 75000 ~ 0.045 * income + (0.08 * income),
+      income <= 100000 ~ 0.0575 * income + (0.08 * income),
+      income > 100000 ~ 0.06 * income + (0.08 * income)
+      ),
+    years_worked > 7 ~ case_when(
+      income <= 45000 ~ (0.03 * income) + (0.1 * income), # after 7 years CUNY contributes 10%+
+      income <= 55000 ~ 0.035 * income + (0.1 * income),
+      income <= 75000 ~ 0.045 * income + (0.1 * income),
+      income <= 100000 ~ 0.0575 * income + (0.1 * income),
+      income > 100000 ~ 0.06 * income + (0.1 * income)
+    )
+  )
+}
+
+opr_bob <- opr_bob |>
+  mutate(
+    years_worked = row_number() - 1
+  )
+
+opr_bob_invest <- opr_bob |>
+  mutate(
+    yearly_contribution = opr_cont(years_worked,opr_bob$income),
+    monthly_contribution = opr_cont(years_worked,opr_bob$income)/12
+  ) |>
+  left_join(
+    extended_us_mkt_data, by="Year"
+  ) |>
+  rename(
+    `avg_price_us_mkt` = avg_price
+  ) |>
+  mutate(
+    bought_us_mkt_shares =  case_when(
+      between(age, 25, 49) ~ (yearly_contribution * 0.54) / avg_price_us_mkt,
+      between(age, 50, 59) ~ (yearly_contribution * 0.47) / avg_price_us_mkt,
+      between(age, 60, 74) ~ (yearly_contribution * 0.34) / avg_price_us_mkt,
+      age > 74 ~ (yearly_contribution * 0.19) / avg_price_us_mkt
+    )
+  ) |>
+  left_join(
+    filtered_intl_mkt_data, by = "Year"
+  ) |>
+  rename(
+    `avg_price_intl_mkt` = avg_price
+  ) |>
+  mutate(
+    bought_intl_mkt_shares = case_when(
+      between(age, 25, 49) ~ (yearly_contribution * 0.36) / avg_price_intl_mkt,
+      between(age, 50, 59) ~ (yearly_contribution * 0.32) / avg_price_intl_mkt,
+      between(age, 60, 74) ~ (yearly_contribution * 0.23) / avg_price_intl_mkt,
+      age > 74 ~ (yearly_contribution * 0.13) / avg_price_intl_mkt
+    )
+  ) |>
+  left_join(
+    filtered_bonds_data, by = "Year"
+  ) |>
+  mutate(
+    bought_bonds = case_when(
+      between(age, 25, 49) ~ (yearly_contribution * 0.10) / median_bond_price,
+      between(age, 50, 59) ~ (yearly_contribution * 0.21) / median_bond_price,
+      between(age, 60, 74) ~ (yearly_contribution * 0.43) / median_bond_price,
+      age > 74 ~ (yearly_contribution * 0.62) / median_bond_price
+    )
+  ) |>
+  left_join(
+    filtered_debts_data, by = "Year"
+  ) |>
+  mutate(
+    bought_debts = case_when(
+      age <= 74 ~ 0,
+      age > 74 ~ (yearly_contribution * 0.06) / avg_debts_price
+    )
+  )
+
+
+all_markets <- extended_us_mkt_data |>
+  rename(
+    `avg_price_us_mkt` = avg_price
+    ) |>
+  left_join(
+    extended_intl_mkt_data, by = "Year"
+    ) |>
+  rename(
+    `avg_price_intl_mkt` = avg_price
+    ) |>
+  left_join(
+    extended_bonds_data, by = "Year"
+    ) |>
+  left_join(
+    extended_debts_data, by = "Year"
+    ) 
+
+
+filtered_all_markets <- all_markets |>
+  filter(Year >= 2014)
+
+bob_us_mkt_shares <- sum(opr_bob_invest$bought_us_mkt_shares)
+
+bob_intl_mkt_shares <- sum(opr_bob_invest$bought_intl_mkt_shares)
+
+bob_bond_shares <- sum(opr_bob_invest$bought_bonds)
+
+bob_debts_shares <- sum(opr_bob_invest$bought_debts)
+
+bobs_markets <- filtered_all_markets |>
+  mutate(
+    bobs_us_shares = round(bob_us_mkt_shares,3),
+    bobs_us_shares_price = round((avg_price_us_mkt * bob_us_mkt_shares),2),
+    bobs_intl_shares = round(bob_intl_mkt_shares,3),
+    bobs_intl_shares_price = round((avg_price_intl_mkt * bob_intl_mkt_shares),2),
+    bobs_bond_shares = round(bob_bond_shares,3),
+    bobs_bonds_shares_price = round((median_bond_price * bob_bond_shares),2),
+    bobs_debts_shares = round(bob_debts_shares,3),
+    bobs_debts_shares_price = round((avg_debts_price * bob_debts_shares),2)
+  )
+
+
+bobs_markets |>
+  select(
+    Year,
+    `Average Price of U.S. Market` = avg_price_us_mkt,
+    `U.S. Shares` = bobs_us_shares,
+    `U.S. Shares Value` = bobs_us_shares_price,
+    `Average Price of International Market` = avg_price_intl_mkt,
+    `International Shares` = bobs_intl_shares,
+    `International Shares Value` = bobs_intl_shares_price,
+    `Median Bond Price` = median_bond_price,
+    `Bonds Shares` = bobs_bond_shares,
+    `Bonds Shares Values` = bobs_bonds_shares_price,
+    `Average Price of Debt Market` = avg_debts_price,
+    `Shares of Debt` = bobs_debts_shares,
+    `Value of Shares of Debt` = bobs_debts_shares_price
+  ) |>
+  DT::datatable(
+    options = list(pageLength = 7,
+                   columnDefs = list(
+                     # Adding commas for these columns
+                     list(
+                       targets = c(3,6,9,12),
+                       render = JS(
+                         "function(data, type, row, meta) {",
+                         "  return type === 'display' ? data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  # Adding commas
+                         "}"
+                       )
+                     ),
+                     # accounting format
+                     list(
+                       targets = c(2,4,5,7,8,10,11,13),
+                       render = JS(
+                         "function(data, type, row, meta) {",
+                         "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  
+                         "}"
+                       )
+                     )
+                   )
+    )
+  )
+```
+
+```{r orp-bob-savings_[26], echo=FALSE, message=FALSE, warning=FALSE}
+bob_total_savings <- (
+  mean(bobs_markets$bobs_us_shares_price) + 
+    mean(bobs_markets$bobs_intl_shares_price) +
+    mean(bobs_markets$bobs_bonds_shares_price) +
+    mean(bobs_markets$bobs_debts_shares_price)
+  )
+
+print(glue("Bob's total savings with the ORP plan, averaged on the various markets he invested in, would give him a final investment portfolio of {dollar(bob_total_savings)}.00.\nThat is significantly more than he received from the TRP."))
+```
 
 ## Task 06: Fixed-Rate Analysis
 
