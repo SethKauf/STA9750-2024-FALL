@@ -88,8 +88,10 @@ This is the relevant data from FRED:
   - https://fred.stlouisfed.org/series/QFRD304INFUSNO
 
 The AlphaVantage data comes from querying on different symbols at https://www.alphavantage.co/query
+
 * US Equity Market total returns
   - For this one using [SPY](https://finance.yahoo.com/quote/SPY/) which is the S&P 500 Index gives us a good indicator of how U.S. markets are performing in general, 
+
 * International Equity Market total returns
   - Similarly, [VXUS](https://finance.yahoo.com/quote/VXUS/) or the Vanguard Total International Stock Index can give us an inkling for international markets, though it is limited in data (discussed further below)
 
@@ -627,7 +629,7 @@ Bob is a more prudent person, always has been, he took the more understandable (
 
 Let's help Bob out. Looking at market data over the same time span and understanding how each plan works, would Bob have been better off with the ORP, or did he make the right decision sticking with the TRS?
 
-First, let's see how Bob did. His starting wage in 1983 was \$52,567 which grew yearly in-line with the U.S. Median Wage. This meant that by his retirement in 2013, Bob was earning an Adjusted Gross Income (AGI) of nearly \$180K! Good on ya, Bob.
+First, let's see how Bob did. His starting wage in 1983 was \$52,567 which grew yearly in-line with the U.S. Median Wage.
 
 ```{r working-bob_[20], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
@@ -649,6 +651,8 @@ working_bob$Year <- as.numeric(as.character(working_bob$Year))
 
 print(glue("Professor Bob's starting income in {min(working_bob$Year)} is {dollar(round(min(working_bob$Income), 2))}.\n His salary at retirement in {max(working_bob$Year)} is {dollar(round(max(working_bob$Income), 2))}."))
 ```
+
+ This meant that by his retirement in 2013, Bob was earning an Adjusted Gross Income (AGI) of nearly \$180K! Good on ya, Bob.
 
 ```{r working-bob-plot_[21], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
@@ -1176,10 +1180,233 @@ print(glue("Bob's total savings with the ORP plan, averaged on the various marke
 
 ## Task 06: Fixed-Rate Analysis
 
+This task wants to modify the simulation from the previous section to project an employee's benefit or withdrawal amount from retirement until death.
+
+Bob retired at the end of 2013 at age 70. [According to the CDC](chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://www.cdc.gov/nchs/data/nvsr/nvsr66/nvsr66_03.pdf), as of 2013, the average male-lifespan in the U.S. as of 2013 was 76.4 years. However, let's say that our Bob lives to 80 years, 10 years after he retired.
+
+Our previous analysis assumed Bob wouldn't be withdrawing anything at all, but Bob needs that money to live from 70 - 80 years old.
+
+Bob never lived too lavishly. He lives with his wife Martha in their 3-bedroom condo in SoHo (he bought following the 1983 market crash when the condo's value was at an all-time low, prudent fella) of $400,000 on a 30-year mortgage which he's since paid off.
+
+e has adult children who visit occasionally, but they don't account for his regular expenses anymore.
+
+With 1 dog and 1 cat at home, we can estimate Bob's monthly expenses:
+
+```{r bobs-expenses_[27], echo=FALSE, message=FALSE, warning=FALSE}
+home_purchase_price <- 400000
+price_ptax_2014 <- 0.125
+monthly_col_2014 <- 500
+
+
+bobs_expenses <- retirement_bob |>
+  select(
+    Year,
+    cpi
+  )
+
+
+bobs_expenses <- bobs_expenses |>
+  mutate(
+    monthly_property_tax = if_else(row_number() == 1, round((home_purchase_price * price_ptax_2014)/12,2), NA_real_),
+    monthly_col = if_else(row_number() == 1, round(monthly_col_2014 + (monthly_col_2014 * cpi),2), NA_real_)
+  )
 
 
 
+for (i in 2:nrow(bobs_expenses)){
+  bobs_expenses$monthly_property_tax[i] = (bobs_expenses$monthly_property_tax[i] <- bobs_expenses$monthly_property_tax[i - 1] + (bobs_expenses$monthly_property_tax[i - 1] * bobs_expenses$cpi[i]))
+  
+  bobs_expenses$monthly_col[i] = (bobs_expenses$monthly_col[i] <- bobs_expenses$monthly_col[i - 1] + (bobs_expenses$monthly_col[i - 1] * bobs_expenses$cpi[i]))
+}
 
+
+bobs_expenses <- bobs_expenses |>
+  mutate(
+    annual_col = (monthly_property_tax * 12) + (monthly_col * 12)
+  )
+
+
+bobs_expenses |>
+  DT::datatable(
+    options = list(pageLength = 10,
+                   columnDefs = list(
+                     # Adding commas for these columns
+                     list(
+                       targets = c(3,4,5),
+                       render = JS(
+                         "function(data, type, row, meta) {",
+                         "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  
+                         "}"
+                       )
+                     ),
+                     # Formatting as percentages
+                     list(
+                       targets = c(2),
+                       render = JS(
+                         "function(data, type, row, meta) {",
+                         "  return type === 'display' ? (data*100).toFixed(2) + '%' : data;",  # Formatting as percentage
+                         "}"
+                       )
+                     )
+                   )
+    )
+  )
+```
+
+Let's recall the tables `retirement_bob` and `bobs_markets` to look at how far his pension versus withdrawal would've gone in the 10 year span following his retirement.
+
+```{r bob-withdrawls-pension_[28], echo=FALSE, message=FALSE, warning=FALSE}
+# bringing in pension
+
+starting_pension_2014 <- retirement_bob$starting_pension[1]
+
+
+ret_bob <- retirement_bob |>
+  select(
+    Year,
+    contribution
+  )
+
+bobs_expenses <- bobs_expenses |>
+  left_join(ret_bob, by = "Year") |>
+  mutate(
+    starting_pension = if_else(row_number() == 1, starting_pension_2014, NA_real_)
+  )
+
+bobs_expenses
+
+bobs_expenses <- bobs_expenses |>
+  mutate(
+    ending_pension = if_else(row_number() == 1, starting_pension + contribution - annual_col,NA_real_)
+  )
+
+for (i in 2:nrow(bobs_expenses)){
+  
+  bobs_expenses$starting_pension[i] = bobs_expenses$ending_pension[i - 1]
+  
+  bobs_expenses$ending_pension[i] = (bobs_expenses$ending_pension[i] <- bobs_expenses$starting_pension[i] + bobs_expenses$contribution[i] - bobs_expenses$annual_col)
+
+}
+
+bobs_expenses |>
+  mutate(
+    contribution = round(contribution,2),
+    starting_pension = round(starting_pension,2),
+    ending_pension = round(ending_pension,2)
+  ) |>
+  rename(
+    `Consumer Price Index` = cpi,
+    `Monthly Property Tax` = monthly_property_tax,
+    `Monthly Cost of Living (CoL)` = monthly_col,
+    `Annual Cost of Living (CoL)` = annual_col,
+    `Annual Pension Contribution` = contribution,
+    `Yearly Starting Pension` = starting_pension,
+    `Yearly Ending Pension` = ending_pension
+  ) |>
+  DT::datatable(
+    options = list(pageLength = 10,
+                   columnDefs = list(
+                     # Adding commas for these columns
+                     list(
+                       targets = c(3,4,5,6,7,8),
+                       render = JS(
+                         "function(data, type, row, meta) {",
+                         "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  
+                         "}"
+                       )
+                     ),
+                     # Formatting as percentages
+                     list(
+                       targets = c(2),
+                       render = JS(
+                         "function(data, type, row, meta) {",
+                         "  return type === 'display' ? (data).toFixed(2) + '%' : data;",  # Formatting as percentage
+                         "}"
+                       )
+                     )
+                   )
+    )
+  )
+```
+
+So under the TRS, Bob would be screwed by 2018 if he tried to hold on to that Condo for all these years (though this also assumes he's the only one with any retirement between he and his wife).
+
+```{r bob-withdrawls-fund_[29], echo=FALSE, message=FALSE, warning=FALSE}
+bobs_expenses <- retirement_bob |>
+  select(
+    Year,
+    cpi
+  )
+
+bobs_expenses <- bobs_expenses |>
+  mutate(
+    monthly_property_tax = if_else(row_number() == 1, round((home_purchase_price * price_ptax_2014)/12,2), NA_real_),
+    monthly_col = if_else(row_number() == 1, round(monthly_col_2014 + (monthly_col_2014 * cpi),2), NA_real_)
+  )
+
+for (i in 2:nrow(bobs_expenses)){
+  bobs_expenses$monthly_property_tax[i] = (bobs_expenses$monthly_property_tax[i] <- bobs_expenses$monthly_property_tax[i - 1] + (bobs_expenses$monthly_property_tax[i - 1] * bobs_expenses$cpi[i]))
+  
+  bobs_expenses$monthly_col[i] = (bobs_expenses$monthly_col[i] <- bobs_expenses$monthly_col[i - 1] + (bobs_expenses$monthly_col[i - 1] * bobs_expenses$cpi[i]))
+}
+
+bobs_expenses <- bobs_expenses |>
+  mutate(
+    annual_col = round((monthly_property_tax * 12) + (monthly_col * 12),2),
+    monthly_property_tax = round(monthly_property_tax,2),
+    monthly_col = round(monthly_col,2),
+  )
+
+bobs_expenses <- bobs_expenses |>
+  mutate(
+    funds = if_else(row_number()==1,bob_total_savings,NA_real_)
+  )
+
+
+for (i in 2:nrow(bobs_expenses)){
+  bobs_expenses$funds[i] = (bobs_expenses$funds[i] <- bobs_expenses$funds[i - 1] - bobs_expenses$annual_col[i])
+}
+
+bobs_expenses <- bobs_expenses |>
+  mutate(
+    funds = round(funds,2)
+  )
+
+bobs_expenses |>
+  rename(
+    `Consumer Price Index` = cpi,
+    `Monthly Property Tax` = monthly_property_tax,
+    `Monthly Cost of Living (CoL)` = monthly_col,
+    `Annual Cost of Living (CoL)` = annual_col,
+    `Withdrawable Funds` = funds
+  ) |>
+  DT::datatable(
+    options = list(pageLength = 10,
+                   columnDefs = list(
+                     # Adding commas for these columns
+                     list(
+                       targets = c(3,4,5,6),
+                       render = JS(
+                         "function(data, type, row, meta) {",
+                         "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  
+                         "}"
+                       )
+                     ),
+                     # Formatting as percentages
+                     list(
+                       targets = c(2),
+                       render = JS(
+                         "function(data, type, row, meta) {",
+                         "  return type === 'display' ? (data).toFixed(2) + '%' : data;",  # Formatting as percentage
+                         "}"
+                       )
+                     )
+                   )
+    )
+  )
+```
+
+So with the ORP, Bob will still have a lot of money leftover, assuming he's doing monthly withdrawals without replenishment. ORP seems to have been the way to go if he wanted to keep that condo.
 
 ## Task 07: Monte-Carlo Analysis
 
