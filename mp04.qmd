@@ -60,15 +60,17 @@ dotenv::load_dot_env(".secrets")
 
 I've registered the API Keys and hidden them internally. You will have to request your own from AlphaVantage and FRED rewspectivcely 
 
-```{r alpha-key_[3], echo=TRUE, message=FALSE, warning=FALSE}
-# Key has been registeted previously
+```{r alpha-key_[3], echo=FALSE, message=FALSE, warning=FALSE}
+# Key has been registered previously
 alpha_api_key <- Sys.getenv("ALPHA_API_KEY")
+print("API Key 1 Loaded")
 ```
 
 ## Task 02: Register for FRED API Key
-```{r fred-key_[4], echo=TRUE, message=FALSE, warning=FALSE}
-# Key has been registeted previously
+```{r fred-key_[4], echo=FALSE, message=FALSE, warning=FALSE}
+# Key has been registered previously
 fred_api_key <- Sys.getenv("FRED_API_KEY")
+print("API Key 2 Loaded")
 ```
 
 
@@ -78,16 +80,12 @@ With the API Keys in hand, the next step is to pull data that can influence our 
 
 This is the relevant data from FRED:
 
-* Inflation
-  - https://fred.stlouisfed.org/series/FPCPITOTLZGUSA
-* Wage Growth
-  - https://fred.stlouisfed.org/series/FRBATLWGTUMHWG83O
-* Bond market total returns
-  - https://fred.stlouisfed.org/series/BAMLCC0A4BBBTRIV
-* Short-term debt returns
-  - https://fred.stlouisfed.org/series/QFRD304INFUSNO
+* [Inflation](https://fred.stlouisfed.org/series/FPCPITOTLZGUSA)
+* [Wage Growth](https://fred.stlouisfed.org/series/FRBATLWGTUMHWG83O)
+* [Bond market total returns](https://fred.stlouisfed.org/series/BAMLCC0A4BBBTRIV)
+* [Short-term debt returns](https://fred.stlouisfed.org/series/QFRD304INFUSNO)
 
-The AlphaVantage data comes from querying on different symbols at https://www.alphavantage.co/query
+The AlphaVantage data comes from querying on different symbols through their API
 
 * US Equity Market total returns
   - For this one using [SPY](https://finance.yahoo.com/quote/SPY/) which is the S&P 500 Index gives us a good indicator of how U.S. markets are performing in general, 
@@ -656,7 +654,6 @@ print(glue("Professor Bob's starting income in {min(working_bob$Year)} is {dolla
 
 ```{r working-bob-plot_[21], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
-# Create the ggplot2 object with custom tooltip
 working_bob_plot <- ggplot(working_bob, aes(x = Year, y = Income)) +
   geom_line(color = "#44b80a", size = 1.5) +  # Line for Income
   geom_hline(yintercept = 100000, linetype = "dashed", color = "gray") +
@@ -1197,7 +1194,6 @@ home_purchase_price <- 400000
 price_ptax_2014 <- 0.125
 monthly_col_2014 <- 500
 
-
 bobs_expenses <- retirement_bob |>
   select(
     Year,
@@ -1211,8 +1207,6 @@ bobs_expenses <- bobs_expenses |>
     monthly_col = if_else(row_number() == 1, round(monthly_col_2014 + (monthly_col_2014 * cpi),2), NA_real_)
   )
 
-
-
 for (i in 2:nrow(bobs_expenses)){
   bobs_expenses$monthly_property_tax[i] = (bobs_expenses$monthly_property_tax[i] <- bobs_expenses$monthly_property_tax[i - 1] + (bobs_expenses$monthly_property_tax[i - 1] * bobs_expenses$cpi[i]))
   
@@ -1222,7 +1216,9 @@ for (i in 2:nrow(bobs_expenses)){
 
 bobs_expenses <- bobs_expenses |>
   mutate(
-    annual_col = (monthly_property_tax * 12) + (monthly_col * 12)
+    annual_col = round((monthly_property_tax * 12) + (monthly_col * 12),2),
+    monthly_property_tax = round(monthly_property_tax,2),
+    monthly_col = round(monthly_col,2)
   )
 
 
@@ -1267,28 +1263,26 @@ ret_bob <- retirement_bob |>
     contribution
   )
 
-bobs_expenses <- bobs_expenses |>
+bobs_expenses_trs <- bobs_expenses |>
   left_join(ret_bob, by = "Year") |>
   mutate(
     starting_pension = if_else(row_number() == 1, starting_pension_2014, NA_real_)
   )
 
-bobs_expenses
-
-bobs_expenses <- bobs_expenses |>
+bobs_expenses_trs <- bobs_expenses_trs |>
   mutate(
     ending_pension = if_else(row_number() == 1, starting_pension + contribution - annual_col,NA_real_)
   )
 
-for (i in 2:nrow(bobs_expenses)){
+for (i in 2:nrow(bobs_expenses_trs)){
   
-  bobs_expenses$starting_pension[i] = bobs_expenses$ending_pension[i - 1]
+  bobs_expenses_trs$starting_pension[i] = bobs_expenses_trs$ending_pension[i - 1]
   
-  bobs_expenses$ending_pension[i] = (bobs_expenses$ending_pension[i] <- bobs_expenses$starting_pension[i] + bobs_expenses$contribution[i] - bobs_expenses$annual_col)
+  bobs_expenses_trs$ending_pension[i] = (bobs_expenses_trs$ending_pension[i] <- bobs_expenses_trs$starting_pension[i] + bobs_expenses_trs$contribution[i] - bobs_expenses_trs$annual_col)
 
 }
 
-bobs_expenses |>
+bobs_expenses_trs |>
   mutate(
     contribution = round(contribution,2),
     starting_pension = round(starting_pension,2),
@@ -1332,47 +1326,23 @@ bobs_expenses |>
 So under the TRS, Bob would be screwed by 2018 if he tried to hold on to that Condo for all these years (though this also assumes he's the only one with any retirement between he and his wife).
 
 ```{r bob-withdrawls-fund_[29], echo=FALSE, message=FALSE, warning=FALSE}
-bobs_expenses <- retirement_bob |>
-  select(
-    Year,
-    cpi
-  )
 
-bobs_expenses <- bobs_expenses |>
-  mutate(
-    monthly_property_tax = if_else(row_number() == 1, round((home_purchase_price * price_ptax_2014)/12,2), NA_real_),
-    monthly_col = if_else(row_number() == 1, round(monthly_col_2014 + (monthly_col_2014 * cpi),2), NA_real_)
-  )
-
-for (i in 2:nrow(bobs_expenses)){
-  bobs_expenses$monthly_property_tax[i] = (bobs_expenses$monthly_property_tax[i] <- bobs_expenses$monthly_property_tax[i - 1] + (bobs_expenses$monthly_property_tax[i - 1] * bobs_expenses$cpi[i]))
-  
-  bobs_expenses$monthly_col[i] = (bobs_expenses$monthly_col[i] <- bobs_expenses$monthly_col[i - 1] + (bobs_expenses$monthly_col[i - 1] * bobs_expenses$cpi[i]))
-}
-
-bobs_expenses <- bobs_expenses |>
-  mutate(
-    annual_col = round((monthly_property_tax * 12) + (monthly_col * 12),2),
-    monthly_property_tax = round(monthly_property_tax,2),
-    monthly_col = round(monthly_col,2),
-  )
-
-bobs_expenses <- bobs_expenses |>
+bobs_expenses_orp <- bobs_expenses |>
   mutate(
     funds = if_else(row_number()==1,bob_total_savings,NA_real_)
   )
 
 
-for (i in 2:nrow(bobs_expenses)){
+for (i in 2:nrow(bobs_expenses_orp)){
   bobs_expenses$funds[i] = (bobs_expenses$funds[i] <- bobs_expenses$funds[i - 1] - bobs_expenses$annual_col[i])
 }
 
-bobs_expenses <- bobs_expenses |>
+bobs_expenses_orp <- bobs_expenses_orp |>
   mutate(
     funds = round(funds,2)
   )
 
-bobs_expenses |>
+bobs_expenses_orp |>
   rename(
     `Consumer Price Index` = cpi,
     `Monthly Property Tax` = monthly_property_tax,

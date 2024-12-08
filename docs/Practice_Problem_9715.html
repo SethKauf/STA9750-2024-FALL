@@ -4999,11 +4999,11 @@ window.Quarto = {
 <p>So for example, if <span class="math inline">\(R_1=X=k=1\)</span>, then the probability that <span class="math inline">\(R_2 \geq 1\)</span> is <span class="math inline">\(\frac {7-1} {6} = 1.00 = 100\%\)</span>, because <span class="math inline">\(1\)</span> is the minimum number on <span class="math inline">\(k\)</span>’s support.</p>
 <p>If <span class="math inline">\(R_1=3\)</span>, then <span class="math inline">\(P(R_2 \geq 3) = \frac {7-3} {6} = \frac {4} {6} = \frac {2} {3} \approx 0.667 = 66.7\%\)</span>, which makes sense:</p>
 <p>For <span class="math inline">\(R_2 \geq 3\)</span>,</p>
-R_2 =
-<span class="math display">\[\begin{cases}
+<p><span class="math inline">\(R_2 =
+\begin{cases}
 1, &amp; \text{if } Y \in \{3, 4, 5, 6\}, \\
 0, &amp; \text{if } Y \in \{1, 2\}.
-\end{cases}\]</span>
+\end{cases}\)</span></p>
 <p>We can have <span class="math inline">\(4\)</span> true values (<span class="math inline">\(t\)</span>) and <span class="math inline">\(2\)</span> false (<span class="math inline">\(f\)</span>) values in a space of <span class="math inline">\(6\)</span> (<span class="math inline">\(t+f\)</span>) values. <span class="math inline">\(\frac {t} {t+f} = \frac {4} {4+2}=\frac {4} {6}=\frac {2} {3}\)</span></p>
 <p>We need to find the Expected Value of <span class="math inline">\(Y\)</span> to answer the question.</p>
 <p>To find <span class="math inline">\(E[Y]\)</span>, we need to find the expected value of <span class="math inline">\(Y\)</span> at various points <span class="math inline">\(X\)</span>.</p>
