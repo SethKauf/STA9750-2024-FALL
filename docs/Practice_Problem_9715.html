@@ -4966,7 +4966,8 @@ window.Quarto = {
 
 <section id="background" class="level1">
 <h1>Background</h1>
-<p>My practice problem for the 9715 Final is from Ch. 9.9 Q. 13 in Blitzstein Hwang Probability pdf (page 446). It is a conditional probability problem.</p>
+<p>My practice problem for the 9715 Final is from Ch. 9.9 Q. 13 in Blitzstein Hwang Probability pdf (page 446).</p>
+<p>It is a conditional probability problem.</p>
 </section>
 <section id="practice-problem" class="level1">
 <h1>Practice problem</h1>
@@ -4995,14 +4996,14 @@ window.Quarto = {
 <p>Once the first roll <span class="math inline">\((R_1)\)</span> where <span class="math inline">\(X=k\)</span> is known, the probability of rolling a number at least as large as <span class="math inline">\(k\)</span> on subsequent rolls is:</p>
 <p><span class="math inline">\(P(R_1)=P(X=k)=\frac {1} {6}\)</span></p>
 <p><span class="math inline">\(P(R_2 \geq k) = \frac {7-k} {6}\)</span></p>
-<p>So for example, if <span class="math inline">\(R_1=X=k=1\)</span>, then the probability that <span class="math inline">\(R_2 \geq 1\)</span> is <span class="math inline">\(\frac {7-1} {6} = 1.00\)</span> or 100%, because <span class="math inline">\(1\)</span> is the minimum number on <span class="math inline">\(k\)</span>’s support.</p>
-<p>If <span class="math inline">\(R_1=3\)</span>, then <span class="math inline">\(P(R_2 \geq 3) = \frac {7-3} {6} = \frac {4} {6} = \frac {2} {3} \approx 0.667 = 66.7%\)</span>, which makes sense:</p>
+<p>So for example, if <span class="math inline">\(R_1=X=k=1\)</span>, then the probability that <span class="math inline">\(R_2 \geq 1\)</span> is <span class="math inline">\(\frac {7-1} {6} = 1.00 = 100\%\)</span>, because <span class="math inline">\(1\)</span> is the minimum number on <span class="math inline">\(k\)</span>’s support.</p>
+<p>If <span class="math inline">\(R_1=3\)</span>, then <span class="math inline">\(P(R_2 \geq 3) = \frac {7-3} {6} = \frac {4} {6} = \frac {2} {3} \approx 0.667 = 66.7\%\)</span>, which makes sense:</p>
 <p>For <span class="math inline">\(R_2 \geq 3\)</span>,</p>
-<p><span class="math inline">\(R_2 =
-\begin{cases}
-1 &amp; Y \in \{3, 4, 5, 6\}
-0 &amp; Y \in \{1, 2\} \\
-\end{cases}\)</span></p>
+R_2 =
+<span class="math display">\[\begin{cases}
+1, &amp; \text{if } Y \in \{3, 4, 5, 6\}, \\
+0, &amp; \text{if } Y \in \{1, 2\}.
+\end{cases}\]</span>
 <p>We can have <span class="math inline">\(4\)</span> true values (<span class="math inline">\(t\)</span>) and <span class="math inline">\(2\)</span> false (<span class="math inline">\(f\)</span>) values in a space of <span class="math inline">\(6\)</span> (<span class="math inline">\(t+f\)</span>) values. <span class="math inline">\(\frac {t} {t+f} = \frac {4} {4+2}=\frac {4} {6}=\frac {2} {3}\)</span></p>
 <p>We need to find the Expected Value of <span class="math inline">\(Y\)</span> to answer the question.</p>
 <p>To find <span class="math inline">\(E[Y]\)</span>, we need to find the expected value of <span class="math inline">\(Y\)</span> at various points <span class="math inline">\(X\)</span>.</p>
