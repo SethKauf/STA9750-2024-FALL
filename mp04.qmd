@@ -4,10 +4,23 @@ format: html
 css: styles.css
 ---
 
-CUNY Retirement Plans
-
 # Introduction
 
+This project looks into different retirement packages available for new CUNY employees.
+
+To do this, it looks at market data from two sources:
+
+[The Federal Reserve Bank of St. Louis](https://fred.stlouisfed.org/) which has available information on inflation, wage growth, bonds, and U.S. debt
+
+[Alpha Vantage](https://www.alphavantage.co/) which has available information on the U.S. and International Stock Markets.
+
+The ultimate goal is to compare the traditional Teaching Retirement Plan and the newer Optional Retirement Plan and make a recommendation to a new CUNY employee for which to take.
+
+First is reviewing it through the lens of an employee who worked for CUNY from 1983 - 2013 and has been retired since.
+
+Afterwards, I will make a recommendation for an incoming CUNY employee as a benefits-specialist, to help guide them on their journey to retirement.
+
+We will accomplish this task using `R`.
 
 ## Task 00: Install Packages and Libraries
 ```{r install-packages_[1], echo=TRUE, message=FALSE, warning=FALSE}
@@ -44,6 +57,9 @@ dotenv::load_dot_env(".secrets")
 ```
 
 ## Task 01: Register for AlphaVantage API Key
+
+I've registered the API Keys and hidden them internally. You will have to request your own from AlphaVantage and FRED rewspectivcely 
+
 ```{r alpha-key_[3], echo=TRUE, message=FALSE, warning=FALSE}
 # Key has been registeted previously
 alpha_api_key <- Sys.getenv("ALPHA_API_KEY")
@@ -58,21 +74,27 @@ fred_api_key <- Sys.getenv("FRED_API_KEY")
 
 ## Task 03: Data Acquisition
 
-Pulling in data on:
+With the API Keys in hand, the next step is to pull data that can influence our decision on which retirement package is better.
+
+This is the relevant data from FRED:
 
 * Inflation
-  - FRED
+  - https://fred.stlouisfed.org/series/FPCPITOTLZGUSA
 * Wage Growth
-  - FRED
-* US Equity Market total returns
-  - AlphaVantage
-* International Equity Market total returns
-  - AlphaVantage
+  - https://fred.stlouisfed.org/series/FRBATLWGTUMHWG83O
 * Bond market total returns
-  - FRED
+  - https://fred.stlouisfed.org/series/BAMLCC0A4BBBTRIV
 * Short-term debt returns
-  - FRED
+  - https://fred.stlouisfed.org/series/QFRD304INFUSNO
 
+The AlphaVantage data comes from querying on different symbols at https://www.alphavantage.co/query
+* US Equity Market total returns
+  - For this one using [SPY](https://finance.yahoo.com/quote/SPY/) which is the S&P 500 Index gives us a good indicator of how U.S. markets are performing in general, 
+* International Equity Market total returns
+  - Similarly, [VXUS](https://finance.yahoo.com/quote/VXUS/) or the Vanguard Total International Stock Index can give us an inkling for international markets, though it is limited in data (discussed further below)
+
+
+First creating functions so only a couple of parameters need to be tweaked to call in from each dataset.
 
 ```{r fred-function_[5], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
@@ -95,10 +117,7 @@ get_fred_data <- function(url,series_id,api_key){
 }
 ```
 
-
-
-
-
+The above function will automatically pull data from FRED for a symbol, the below from AlphaVantage.
 
 ```{r alpha-function_[6], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
@@ -168,6 +187,8 @@ get_alpha_data <- function(url,lookup_symbol,api_key){
   }
 
 ```
+
+The next few sections are just pulling in these data sets and working through them.
 
 ### 3a. Inflation Data
 
@@ -285,6 +306,7 @@ print(glue("The US Equity Market Dataset covers a year range of {min(us_monthly_
 ```
 
 ### 3d. International Equity Market Total Returns (Lookup Symbol = VXUS)
+
 ```{r international-market-data_[10], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
 intl_monthly_medians <- get_alpha_data(url=base_alpha_url,lookup_symbol="VXUS",api_key=alpha_api_key)
@@ -627,7 +649,6 @@ working_bob$Year <- as.numeric(as.character(working_bob$Year))
 
 print(glue("Professor Bob's starting income in {min(working_bob$Year)} is {dollar(round(min(working_bob$Income), 2))}.\n His salary at retirement in {max(working_bob$Year)} is {dollar(round(max(working_bob$Income), 2))}."))
 ```
-
 
 ```{r working-bob-plot_[21], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
