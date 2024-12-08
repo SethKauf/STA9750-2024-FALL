@@ -4996,13 +4996,14 @@ window.Quarto = {
 <p><span class="math inline">\(P(R_1)=P(X=k)=\frac {1} {6}\)</span></p>
 <p><span class="math inline">\(P(R_2 \geq k) = \frac {7-k} {6}\)</span></p>
 <p>So for example, if <span class="math inline">\(R_1=X=k=1\)</span>, then the probability that <span class="math inline">\(R_2 \geq 1\)</span> is <span class="math inline">\(\frac {7-1} {6} = 1.00\)</span> or 100%, because <span class="math inline">\(1\)</span> is the minimum number on <span class="math inline">\(k\)</span>’s support.</p>
-<p>If <span class="math inline">\(R_1=3\)</span>, then <span class="math inline">\(R_2 \geq 3 = \frac {7-3} {6} = \frac {4} {6} = \frac {2} {3} \approx 0.667 = 66.7%\)</span>, which makes sense: for <span class="math inline">\(R_2 \geq 3\)</span>,</p>
+<p>If <span class="math inline">\(R_1=3\)</span>, then <span class="math inline">\(P(R_2 \geq 3) = \frac {7-3} {6} = \frac {4} {6} = \frac {2} {3} \approx 0.667 = 66.7%\)</span>, which makes sense:</p>
+<p>For <span class="math inline">\(R_2 \geq 3\)</span>,</p>
 <p><span class="math inline">\(R_2 =
 \begin{cases}
-0 &amp; Y \in \{1, 2\} \\
 1 &amp; Y \in \{3, 4, 5, 6\}
+0 &amp; Y \in \{1, 2\} \\
 \end{cases}\)</span></p>
-<p>We can have <span class="math inline">\(4\)</span> true values and <span class="math inline">\(2\)</span> false values. <span class="math inline">\(\frac {4} {4+2}=\frac {4} {6}=\frac {2} {3}\)</span></p>
+<p>We can have <span class="math inline">\(4\)</span> true values (<span class="math inline">\(t\)</span>) and <span class="math inline">\(2\)</span> false (<span class="math inline">\(f\)</span>) values in a space of <span class="math inline">\(6\)</span> (<span class="math inline">\(t+f\)</span>) values. <span class="math inline">\(\frac {t} {t+f} = \frac {4} {4+2}=\frac {4} {6}=\frac {2} {3}\)</span></p>
 <p>We need to find the Expected Value of <span class="math inline">\(Y\)</span> to answer the question.</p>
 <p>To find <span class="math inline">\(E[Y]\)</span>, we need to find the expected value of <span class="math inline">\(Y\)</span> at various points <span class="math inline">\(X\)</span>.</p>
 <p>We established the conditional distribution of <span class="math inline">\(Y|X=k\sim(\frac {7-k} {6})\)</span> which is a finite distribution.</p>
@@ -5044,7 +5045,7 @@ window.Quarto = {
 <section id="simulating-yxk-rolling-a-6-sided-die" class="level2">
 <h2 class="anchored" data-anchor-id="simulating-yxk-rolling-a-6-sided-die">Simulating <span class="math inline">\(Y|X=k\)</span> rolling a 6-Sided Die</h2>
 <p>We simulate 100,000 times in the below code to count how many times it takes for <code>next_roll</code> <span class="math inline">\(\geq\)</span> <code>first_roll</code>. The result is stored in a <code>count</code> which is updated until <span class="math inline">\(Y \geq X=k\)</span>.</p>
-<p>Once 100,000 simulations have been runm, we take the mean of all counts from the simulations, and that’s our simulated Expected Value.</p>
+<p>Once 100,000 simulations have been run, we take the mean of all counts from the simulations, and that’s our simulated Expected Value.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">&quot;ggplot2&quot;</span>)) <span class="fu">install.packages</span>(<span class="st">&quot;ggplot2&quot;</span>)</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">&quot;scales&quot;</span>)) <span class="fu">install.packages</span>(<span class="st">&quot;scales&quot;</span>)</span>
