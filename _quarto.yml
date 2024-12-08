@@ -23,6 +23,8 @@ website:
           href: mp03.qmd
         - text: "Mini Project 4: Finance"
           href: mp04.qmd
+        - text: "9715 Practice Problem"
+          href: Practice_Problem_9715.qmd
     
 format:
   html:

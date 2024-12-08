@@ -1150,7 +1150,7 @@ bob_total_savings <- (
     mean(bobs_markets$bobs_debts_shares_price)
   )
 
-print(glue("Bob's total savings with the ORP plan, averaged on the various markets he invested in, would give him a final investment portfolio of {dollar(bob_total_savings)}.00.\nThat is significantly more than he received from the TRP."))
+print(glue("Bob's total savings with the ORP plan, averaged on the various markets he invested in\n, would give him a final investment portfolio of {dollar(bob_total_savings)}.00.\nThat is significantly more than he received from the TRP."))
 ```
 
 ## Task 06: Fixed-Rate Analysis
