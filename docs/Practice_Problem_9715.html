@@ -4981,13 +4981,13 @@ window.Quarto = {
 <h1>Original Question</h1>
 <p>A fair 6-sided die is rolled once.</p>
 <p>Find the expected number of additional rolls needed to obtain a value at least as large as that of the first roll.</p>
-<p>E[# of additional rolls]</p>
+<p><span class="math inline">\(\mathbb{E}[\text{\# of additional rolls}]\)</span></p>
 </section>
 <section id="solution" class="level1">
 <h1>Solution</h1>
 <p><span class="math inline">\(X\)</span> = Result of first roll</p>
-<p><span class="math inline">\(X \sim Uniform(\{1,2,3,4,5,6\})\)</span></p>
-<p><span class="math inline">\(Y\)</span> = # of additional rolls <span class="math inline">\(\geq X\)</span></p>
+<p><span class="math inline">\(X \sim DiscreteUniform(\{1,2,3,4,5,6\})\)</span></p>
+<p><span class="math inline">\(Y = \text{\# of additional rolls} \geq X\)</span></p>
 <p><span class="math inline">\(Y|X=k\sim(\frac {7-k} {6})\)</span></p>
 <p><span class="math inline">\(k\)</span> = outcome of the first roll of the die, <span class="math inline">\(X\)</span>.</p>
 <p><span class="math inline">\(k \in \{1,2,3,4,5,6\}\)</span></p>
@@ -4996,13 +4996,12 @@ window.Quarto = {
 <p>Once the first roll <span class="math inline">\((R_1)\)</span> where <span class="math inline">\(X=k\)</span> is known, the probability of rolling a number at least as large as <span class="math inline">\(k\)</span> on subsequent rolls is:</p>
 <p><span class="math inline">\(P(R_1)=P(X=k)=\frac {1} {6}\)</span></p>
 <p><span class="math inline">\(P(R_2 \geq k) = \frac {7-k} {6}\)</span></p>
-<p>So for example, if <span class="math inline">\(R_1=X=k=1\)</span>, then the probability that <span class="math inline">\(R_2 \geq 1\)</span> is <span class="math inline">\(\frac {7-1} {6} = 1.00 = 100\%\)</span>, because <span class="math inline">\(1\)</span> is the minimum number on <span class="math inline">\(k\)</span>’s support.</p>
+<p>So for example, if <span class="math inline">\(R_1=X=k=1\)</span>, then the probability that <span class="math inline">\(R_2 \geq 1\)</span> is <span class="math inline">\(\frac {7-1} {6} = 1.00 = 100\%\)</span>, because <span class="math inline">\(1\)</span> is the minimum number on <span class="math inline">\(R\)</span>’s support.</p>
 <p>If <span class="math inline">\(R_1=3\)</span>, then <span class="math inline">\(P(R_2 \geq 3) = \frac {7-3} {6} = \frac {4} {6} = \frac {2} {3} \approx 0.667 = 66.7\%\)</span>, which makes sense:</p>
-<p>For <span class="math inline">\(R_2 \geq 3\)</span>,</p>
-<p><span class="math inline">\(R_2 =
+<p><span class="math inline">\(\mathbb{I}(R_2 \geq 3)
 \begin{cases}
-1, &amp; \text{if } Y \in \{3, 4, 5, 6\}, \\
-0, &amp; \text{if } Y \in \{1, 2\}.
+1 &amp; \text{if } Y \in \{3, 4, 5, 6\} \\
+0 &amp; \text{if } Y \in \{1, 2\}
 \end{cases}\)</span></p>
 <p>We can have <span class="math inline">\(4\)</span> true values (<span class="math inline">\(t\)</span>) and <span class="math inline">\(2\)</span> false (<span class="math inline">\(f\)</span>) values in a space of <span class="math inline">\(6\)</span> (<span class="math inline">\(t+f\)</span>) values. <span class="math inline">\(\frac {t} {t+f} = \frac {4} {4+2}=\frac {4} {6}=\frac {2} {3}\)</span></p>
 <p>We need to find the Expected Value of <span class="math inline">\(Y\)</span> to answer the question.</p>
@@ -5027,7 +5026,7 @@ window.Quarto = {
 </blockquote>
 <p>Plugging our variables into the formula (and inverting the conditional distribution <span class="math inline">\(\frac {k-7} {6}=\frac {6} {7-k}\)</span> to simplify):</p>
 <p><span class="math inline">\(\Sigma^6_{k=1}\frac {6} {7-k}\times\frac {1} {6}=\Sigma^6_{k=1}\frac {1} {7-k}\)</span>, replacing <span class="math inline">\(\frac {1} {7-k}\)</span> with some variable <span class="math inline">\(j\)</span>:</p>
-<p><span class="math inline">\(E[Y]=\Sigma^6_{k=1}\frac {1} {j}=\frac {1} {1} + \frac {1} {2} + \frac {1} {3} + \frac {1} {4} + \frac {1} {5} + \frac {1} {6}=\frac {60} {60} + \frac {30} {60} + \frac {20} {60} + \frac {15} {60} + \frac {12} {60} + \frac {10} {60} = \frac {147} {60} = 2 \times \frac {9} {20} = 2.45\)</span></p>
+<p><span class="math inline">\(E[Y]=\Sigma^6_{k=1}\frac {1} {j}=\frac {1} {1} + \frac {1} {2} + \frac {1} {3} + \frac {1} {4} + \frac {1} {5} + \frac {1} {6}=\frac {60} {60} + \frac {30} {60} + \frac {20} {60} + \frac {15} {60} + \frac {12} {60} + \frac {10} {60} = \frac {147} {60} = \frac {49} {20} = 2.45\)</span></p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">&quot;glue&quot;</span>)) <span class="fu">install.packages</span>(<span class="st">&quot;glue&quot;</span>)</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(glue)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
