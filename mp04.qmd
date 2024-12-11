@@ -58,7 +58,7 @@ dotenv::load_dot_env(".secrets")
 
 ## Task 01: Register for AlphaVantage API Key
 
-I've registered the API Keys and hidden them internally. You will have to request your own from AlphaVantage and FRED rewspectivcely 
+I've registered the API Keys and hidden them internally. You will have to request your own from AlphaVantage and FRED respectivcely 
 
 ```{r alpha-key_[3], echo=FALSE, message=FALSE, warning=FALSE}
 # Key has been registered previously
@@ -225,7 +225,7 @@ print(glue("The Inflation Dataset covers a year range of {min(clean_inflation_df
 
 ### 3b. Wage Data
 
-Note: This data spans from January 1983 through October 2024. However, there are two date ranges where there is no recorded data: July 1985 - September 1986 (14 months) and June 1995 - August 1996 (14 months). This is "[...due to changes in methodology.](https://fred.stlouisfed.org/series/FRBATLWGTUMHWG83O)"
+Note: This data spans from January 1983 through October 2024. However, there are two date ranges where there is no recorded data: July 1985 - September 1986 (15 months) and June 1995 - August 1996 (15 months). This is "[...due to changes in methodology.](https://fred.stlouisfed.org/series/FRBATLWGTUMHWG83O)"
 
 ```{r wage-data_[8], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
@@ -1342,6 +1342,10 @@ bobs_expenses_orp <- bobs_expenses_orp |>
     funds = round(funds,2)
   )
 
+for (i in 2:nrow(bobs_expenses_orp)){
+  bobs_expenses_orp$funds[i] = round((bobs_expenses_orp$funds[i - 1] - bobs_expenses$annual_col[i]),2)
+}
+
 bobs_expenses_orp |>
   rename(
     `Consumer Price Index` = cpi,
@@ -1376,7 +1380,7 @@ bobs_expenses_orp |>
   )
 ```
 
-So with the ORP, Bob will still have a lot of money leftover, assuming he's doing monthly withdrawals without replenishment. ORP seems to have been the way to go if he wanted to keep that condo.
+While with the ORP, Bob will still have a lot of money leftover, assuming he's doing monthly withdrawals without replenishment. ORP seems to have been the way to go if he wanted to keep that condo.
 
 ## Task 07: Monte-Carlo Analysis
 
@@ -1385,3 +1389,6 @@ So with the ORP, Bob will still have a lot of money leftover, assuming he's doin
 
 # Conclusion
 
+It would seem the Optional Retirement Plan with investments in low-risk-low-reward stocks would give our new CUNY employee the best outlook towards retirement.
+
+Although it can be nerve wracking to have a bit more of a "loose" retirement portfolio, judging by stocks yearly growth and the ability to diversify a portfolio and have more control over your future finances, to really have a retirement that doesn't instantly drain the funds, I would recommend this plan.
