@@ -1189,7 +1189,8 @@ e has adult children who visit occasionally, but they don't account for his regu
 
 With 1 dog and 1 cat at home, we can estimate Bob's monthly expenses:
 
-```{r bobs-expenses_[27], echo=FALSE, message=FALSE, warning=FALSE}
+```{r bobs-expenses_[27], echo=TRUE, message=FALSE, warning=FALSE}
+#| code-fold: TRUE
 home_purchase_price <- 400000
 price_ptax_2014 <- 0.125
 monthly_col_2014 <- 500
@@ -1251,7 +1252,8 @@ bobs_expenses |>
 
 Let's recall the tables `retirement_bob` and `bobs_markets` to look at how far his pension versus withdrawal would've gone in the 10 year span following his retirement.
 
-```{r bob-withdrawls-pension_[28], echo=FALSE, message=FALSE, warning=FALSE}
+```{r bob-withdrawls-pension_[28], echo=TRUE, message=FALSE, warning=FALSE}
+#| code-fold: TRUE
 # bringing in pension
 
 starting_pension_2014 <- retirement_bob$starting_pension[1]
@@ -1325,7 +1327,8 @@ bobs_expenses_trs |>
 
 So under the TRS, Bob would be screwed by 2018 if he tried to hold on to that Condo for all these years (though this also assumes he's the only one with any retirement between he and his wife).
 
-```{r bob-withdrawls-fund_[29], echo=FALSE, message=FALSE, warning=FALSE}
+```{r bob-withdrawls-fund_[29], echo=TRUE, message=FALSE, warning=FALSE}
+#| code-fold: TRUE
 
 bobs_expenses_orp <- bobs_expenses |>
   mutate(
@@ -1384,8 +1387,152 @@ While with the ORP, Bob will still have a lot of money leftover, assuming he's d
 
 ## Task 07: Monte-Carlo Analysis
 
+Performing some bootstrap analysis using 200 simulation on the 30-year retirement data, let's see if with resampling we can still conclude that ORP is the better option.
+
+```{r bootstrap-bob_[30], echo=TRUE, message=FALSE, warning=FALSE}
+#| code-fold: TRUE
+# Create resampling function
+bootstrap_resample <- function(data, n_samples = 200) {
+  replicate(n_samples, data[sample(nrow(data), replace = TRUE), ], simplify = FALSE)
+}
+
+# resample each dataset
+trs_bootstrap_samples <- bootstrap_resample(retirement_bob)
+orp_bootstrap_samples <- bootstrap_resample(bobs_markets)
+
+# 10 year projection
+simulate_projection <- function(bootstrap_samples, years = 10) {
+  projections <- lapply(bootstrap_samples, function(sample) {
+    sample |>
+      sample_n(years, replace = TRUE) |>
+      summarise(across(where(is.numeric), mean, na.rm = TRUE))
+  })
+  bind_rows(projections)
+}
 
 
+trs_projections <- simulate_projection(trs_bootstrap_samples)
+orp_projections <- simulate_projection(orp_bootstrap_samples)
+
+
+projections <- data.frame(
+  TRS_Monthly_Pension = trs_projections$monthly_pension,
+  ORP_US_Shares_Price = orp_projections$bobs_us_shares_price
+)
+
+
+# summarize projections
+projection_summary <- projections |>
+  summarise(
+    TRS_Mean = mean(TRS_Monthly_Pension, na.rm = TRUE),
+    TRS_SD = sd(TRS_Monthly_Pension, na.rm = TRUE),
+    ORP_Mean = mean(ORP_US_Shares_Price, na.rm = TRUE),
+    ORP_SD = sd(ORP_US_Shares_Price, na.rm = TRUE)
+  ) |>
+  pivot_longer(cols = everything(), names_to = c("Group", ".value"), names_sep = "_")
+
+
+ggplot(projection_summary, aes(x = Group, y = Mean, fill = Group)) +
+  geom_bar(stat = "identity", position = position_dodge(), alpha = 0.7) +
+  geom_errorbar(aes(ymin = Mean - SD, ymax = Mean + SD), width = 0.2, position = position_dodge(0.9)) + # on average, how off are we?
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Bootstrapped Monte Carlo Projections (10-Year Outlook)",
+    x = "Projection Type",
+    y = "Projected Value"
+  ) +
+  scale_fill_manual(values = c("#2386ca", "#ebb78b")) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        plot.background = element_rect(fill = "gray75"),
+        panel.background = element_rect(fill = "gray75", color = NA))
+```
+
+This seems to conclude in favor of ORP. Looking at a 4% monthly withdrawal rate:
+
+```{r bob-withdrawls-rates-bootstrapped_[31], echo=TRUE, message=FALSE, warning=FALSE}
+#| code-fold: TRUE
+
+simulate_projection_with_withdrawals <- function(bootstrap_samples, years = 10, withdrawal_rate = 0.04, type = "TRS") {
+  projections <- lapply(bootstrap_samples, function(sample) {
+    if (type == "TRS") {
+      projected_funds <- sample |>
+        sample_n(years, replace = TRUE) |>
+        summarise(
+          avg_starting_funds = mean(starting_pension, na.rm = TRUE),
+          avg_contributions = mean(contribution, na.rm = TRUE)
+        )
+    } else if (type == "ORP") {
+      projected_funds <- sample |>
+        sample_n(years, replace = TRUE) |>
+        summarise(
+          avg_starting_funds = mean(
+            bobs_us_shares_price + bobs_intl_shares_price + bobs_bonds_shares_price + bobs_debts_shares_price,
+            na.rm = TRUE
+          ),
+          avg_contributions = 0 
+        )
+    }
+    
+    funds <- numeric(years)
+    funds[1] <- projected_funds$avg_starting_funds + projected_funds$avg_contributions
+    for (i in 2:years) {
+      funds[i] <- funds[i - 1] * (1 - withdrawal_rate)
+    }
+    
+    return(data.frame(Year = 1:years, Remaining_Funds = funds))
+  })
+  
+  bind_rows(projections, .id = "Bootstrap_Sample")
+}
+
+trs_withdrawals <- simulate_projection_with_withdrawals(trs_bootstrap_samples, type = "TRS")
+orp_withdrawals <- simulate_projection_with_withdrawals(orp_bootstrap_samples, type = "ORP")
+
+trs_withdrawals$Type <- "TRS"
+orp_withdrawals$Type <- "ORP"
+
+# Combine data
+withdrawal_projections <- bind_rows(trs_withdrawals, orp_withdrawals)
+
+main_projections <- withdrawal_projections |>
+  group_by(Type, Year) |>
+  summarise(
+    Mean_Remaining_Funds = mean(Remaining_Funds, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  mutate(Year = Year + 2013) 
+
+# callout start and end funds
+callout_data <- main_projections |>
+  filter(Year == 2014 | Year == 2023)
+
+ggplot(main_projections, aes(x = Year, y = Mean_Remaining_Funds, color = Type)) +
+  geom_line(size = 1.2) +  
+  geom_text(
+    data = callout_data,
+    aes(label = scales::comma(round(Mean_Remaining_Funds))),
+    vjust = -0.5,
+    size = 4,
+    show.legend = FALSE
+  ) +  
+  labs(
+    title = "Remaining Funds Over 10 Years with 4% Withdrawal Rate",
+    x = "Year",
+    y = "Remaining Funds",
+    color = "Projection Type"
+  ) +
+  scale_fill_manual(values = c("#2386ca", "#ebb78b")) +
+  scale_y_continuous(labels = scales::comma) +  # Format y-axis
+  scale_x_continuous(breaks = seq(2014, 2023, 1)) +  # Adjust x-axis to show years
+  theme_minimal() +
+  theme(legend.position = "right",
+        plot.background = element_rect(fill = "gray90"),
+        panel.background = element_rect(fill = "gray90", color = NA),
+        panel.grid.major = element_line(color = "gray20", size = 0.35),
+        panel.grid.minor = element_line(color = "gray30", size = 0.35)
+  )
+```
 
 # Conclusion
 
