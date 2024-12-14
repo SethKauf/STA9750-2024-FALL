@@ -101,18 +101,17 @@ First creating functions so only a couple of parameters need to be tweaked to ca
 # Creating a request and clean function for FRED Data
 series_url = "https://api.stlouisfed.org/fred/series/observations?series_id="
 
-get_fred_data <- function(url,series_id,api_key){
-  
-  lookup_url <- paste0(url,series_id,"&api_key=",api_key,"&file_type=json")
-  
+get_fred_data <- function(url, series_id, api_key) {
+  lookup_url <- paste0(url, series_id, "&api_key=", api_key, "&file_type=json")
+
   req <- request(lookup_url)
-  
+
   resp <- req_perform(req)
-  
+
   data <- resp_body_json(resp)
-  
+
   df <- data$observations
-  
+
   return(df)
 }
 ```
@@ -125,44 +124,45 @@ The above function will automatically pull data from FRED for a symbol, the belo
 
 base_alpha_url <- "https://www.alphavantage.co/query"
 
-get_alpha_data <- function(url,lookup_symbol,api_key){
+get_alpha_data <- function(url, lookup_symbol, api_key) {
   req <- request(url) |>
     req_url_query(
       `function` = "TIME_SERIES_DAILY",
-      symbol=lookup_symbol,
+      symbol = lookup_symbol,
       interval = "60min",
       apikey = alpha_api_key,
       outputsize = "full"
     )
-  
+
   resp <- req_perform(req)
-  
+
   data <- resp_body_json(resp)
-  
+
   time_series <- data$`Time Series (Daily)`
-  
+
   # Convert to dataframe
   df <- do.call(rbind, lapply(time_series, function(row) {
     as.data.frame(t(row), stringsAsFactors = FALSE)
   }))
-  
+
   df$Date <- rownames(time_series)
-  
+
   df <- rownames_to_column(df, var = "Date")
-  
+
   # Remove the row names
   rownames(df) <- NULL
-  
-  # Ensure the Date column is in Date format
+
   df$Date <- as.Date(df$Date)
-  
+
   df <- df |>
-    rename(`open` = `1. open`,
-           `high` = `2. high`,
-           `low` = `3. low`,
-           `close` = `4. close`,
-           `volume` = `5. volume`)
-  
+    rename(
+      `open` = `1. open`,
+      `high` = `2. high`,
+      `low` = `3. low`,
+      `close` = `4. close`,
+      `volume` = `5. volume`
+    )
+
   df <- df |>
     mutate(
       open = as.numeric(open),
@@ -171,7 +171,7 @@ get_alpha_data <- function(url,lookup_symbol,api_key){
       close = as.numeric(close),
       volume = as.numeric(volume)
     )
-  
+
   # Create YearMonth column and calculate medians
   medians <- df |>
     mutate(YearMonth = format(Date, "%Y-%m")) |>
@@ -182,9 +182,9 @@ get_alpha_data <- function(url,lookup_symbol,api_key){
       na.rm = TRUE
     )) |>
     ungroup()
-  
+
   return(medians)
-  }
+}
 
 ```
 
@@ -197,9 +197,9 @@ The next few sections are just pulling in these data sets and working through th
 # Pulling this data from the FRED website
 # If you look up the series ID in FRED, you can directly access the data and download its .CSV file there
 
-inflation_series_id = "FPCPITOTLZGUSA"
+inflation_series_id <- "FPCPITOTLZGUSA"
 
-inflation_df <- get_fred_data(url=series_url,series_id=inflation_series_id,api_key=fred_api_key)
+inflation_df <- get_fred_data(url = series_url, series_id = inflation_series_id, api_key = fred_api_key)
 
 clean_inflation_df <- data.frame(
   DATE = sapply(inflation_df, function(x) x$date),
@@ -207,14 +207,17 @@ clean_inflation_df <- data.frame(
 )
 
 clean_inflation_df <- clean_inflation_df |>
-  mutate(year = substr(DATE,start=0,stop=4),
-         inflation_rate = round(inflation_rate,3),
-         yoy_diff = round(inflation_rate - lag(inflation_rate),2),
-         yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)
-         ) |>
-  select(`Year` = year,
-         `Inflation Rate` = inflation_rate,
-         `YoY Differential` = yoy_diff)
+  mutate(
+    year = substr(DATE, start = 0, stop = 4),
+    inflation_rate = round(inflation_rate, 3),
+    yoy_diff = round(inflation_rate - lag(inflation_rate), 2),
+    yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)
+  ) |>
+  select(
+    `Year` = year,
+    `Inflation Rate` = inflation_rate,
+    `YoY Differential` = yoy_diff
+  )
 
 clean_inflation_df |>
   DT::datatable()
@@ -229,9 +232,9 @@ Note: This data spans from January 1983 through October 2024. However, there are
 
 ```{r wage-data_[8], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
-wage_series_id = "FRBATLWGTUMHWG83O"
+wage_series_id <- "FRBATLWGTUMHWG83O"
 
-wage_df <- get_fred_data(url=series_url,series_id=wage_series_id,api_key=fred_api_key)
+wage_df <- get_fred_data(url = series_url, series_id = wage_series_id, api_key = fred_api_key)
 
 clean_wage_df <- data.frame(
   DATE = sapply(wage_df, function(x) x$date),
@@ -240,17 +243,19 @@ clean_wage_df <- data.frame(
 
 
 clean_wage_df <- clean_wage_df |>
-  mutate(year = substr(DATE,start=0,stop=4)) |>
+  mutate(year = substr(DATE, start = 0, stop = 4)) |>
   group_by(year) |>
   summarize(
     mwg = round(median(wage_growth, na.rm = TRUE), 1),
     null_months = sum(is.na(wage_growth)) # Count of NULL months
   ) |>
   ungroup() |>
-  mutate(yoy_diff = round(mwg - lag(mwg),2),
-         yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)) |>
+  mutate(
+    yoy_diff = round(mwg - lag(mwg), 2),
+    yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)
+  ) |>
   select(
-    `Year`= year,
+    `Year` = year,
     `NULL Month Count` = null_months,
     `Median Wage Growth` = mwg,
     `YoY Differential` = yoy_diff
@@ -266,11 +271,11 @@ print(glue("The Wage Dataset covers a year range of {min(clean_wage_df$Year)} to
 
 ```{r us-market-data_[9], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
-us_monthly_medians <- get_alpha_data(url=base_alpha_url,lookup_symbol="SPY",api_key=alpha_api_key)
+us_monthly_medians <- get_alpha_data(url = base_alpha_url, lookup_symbol = "SPY", api_key = alpha_api_key)
 
 us_monthly_medians <- us_monthly_medians |>
   mutate(
-    year = substr(YearMonth,start=0,stop=4)
+    year = substr(YearMonth, start = 0, stop = 4)
   ) |>
   group_by(year) |>
   summarize(across(
@@ -280,13 +285,13 @@ us_monthly_medians <- us_monthly_medians |>
   )) |>
   ungroup() |>
   mutate(
-    open = round(open,2),
+    open = round(open, 2),
     high = round(high, 2),
     low = round(low, 2),
     close = round(close, 2),
     high_low_diff = round(high - low, 2),
     open_close_diff = round(open - close, 2),
-    yoy_diff = round(volume - lag(volume),2),
+    yoy_diff = round(volume - lag(volume), 2),
     yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)
   ) |>
   select(
@@ -309,11 +314,11 @@ print(glue("The US Equity Market Dataset covers a year range of {min(us_monthly_
 
 ```{r international-market-data_[10], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
-intl_monthly_medians <- get_alpha_data(url=base_alpha_url,lookup_symbol="VXUS",api_key=alpha_api_key)
+intl_monthly_medians <- get_alpha_data(url = base_alpha_url, lookup_symbol = "VXUS", api_key = alpha_api_key)
 
 intl_monthly_medians <- intl_monthly_medians |>
   mutate(
-    year = substr(YearMonth,start=0,stop=4)
+    year = substr(YearMonth, start = 0, stop = 4)
   ) |>
   group_by(year) |>
   summarize(across(
@@ -323,13 +328,13 @@ intl_monthly_medians <- intl_monthly_medians |>
   )) |>
   ungroup() |>
   mutate(
-    open = round(open,2),
+    open = round(open, 2),
     high = round(high, 2),
     low = round(low, 2),
     close = round(close, 2),
     high_low_diff = round(high - low, 2),
     open_close_diff = round(open - close, 2),
-    yoy_diff = round(volume - lag(volume),2),
+    yoy_diff = round(volume - lag(volume), 2),
     yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)
   ) |>
   select(
@@ -352,9 +357,9 @@ print(glue("The International Equity Market Dataset covers a year range of {min(
 
 ```{r bond-returns_[11], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
-bond_series_id = "BAMLCC0A4BBBTRIV"
+bond_series_id <- "BAMLCC0A4BBBTRIV"
 
-bond_df <- get_fred_data(url=series_url,series_id=bond_series_id,api_key=fred_api_key)
+bond_df <- get_fred_data(url = series_url, series_id = bond_series_id, api_key = fred_api_key)
 
 clean_bond_df <- data.frame(
   DATE = sapply(bond_df, function(x) x$date),
@@ -362,16 +367,18 @@ clean_bond_df <- data.frame(
 )
 
 clean_bond_df <- clean_bond_df |>
-  mutate(year = substr(DATE,start=0,stop=4)) |>
+  mutate(year = substr(DATE, start = 0, stop = 4)) |>
   group_by(year) |>
   summarize(
     median_bond_price = median(bond, na.rm = TRUE)
   ) |>
   ungroup() |>
-  mutate(yoy_diff = round(median_bond_price - lag(median_bond_price),2),
-         yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)) |>
+  mutate(
+    yoy_diff = round(median_bond_price - lag(median_bond_price), 2),
+    yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)
+  ) |>
   select(
-    `Year`= year,
+    `Year` = year,
     `Median Bond Price` = median_bond_price,
     `YoY Differential` = yoy_diff
   )
@@ -387,9 +394,9 @@ print(glue("The Bond Dataset covers a year range of {min(clean_bond_df$Year)} to
 
 ```{r short-term-debt_[12], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
-short_term_debt_series_id = "QFRD304INFUSNO"
+short_term_debt_series_id <- "QFRD304INFUSNO"
 
-short_term_debt_df <- get_fred_data(url=series_url,series_id=short_term_debt_series_id,api_key=fred_api_key)
+short_term_debt_df <- get_fred_data(url = series_url, series_id = short_term_debt_series_id, api_key = fred_api_key)
 
 clean_short_term_debt_df <- data.frame(
   DATE = sapply(short_term_debt_df, function(x) x$date),
@@ -397,13 +404,15 @@ clean_short_term_debt_df <- data.frame(
 )
 
 clean_short_term_debt_df <- clean_short_term_debt_df |>
-  mutate(year = substr(DATE,start=0,stop=4)) |>
+  mutate(year = substr(DATE, start = 0, stop = 4)) |>
   group_by(year) |>
   summarize(
     annual_financials = round(median(quarterly_financials, na.rm = TRUE), 1)
   ) |>
-  mutate(yoy_diff = round(annual_financials - lag(annual_financials),2),
-         yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)) |>
+  mutate(
+    yoy_diff = round(annual_financials - lag(annual_financials), 2),
+    yoy_diff = if_else(is.na(yoy_diff), 0, yoy_diff)
+  ) |>
   ungroup() |>
   select(
     `Year` = year,
@@ -504,7 +513,7 @@ infl_wgs_yoy_plot <- ggplot(infl_wgs_df, aes(x = Year)) +
   ) +
   scale_x_continuous(breaks = seq(1960, 2024, by = 10)) +
   scale_y_continuous() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "gray") # Centered at 0
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray")
 
 print(infl_wgs_yoy_plot)
 ```
@@ -559,21 +568,22 @@ volume_data <- market_df |>
     names_to = "Market",
     values_to = "Traded Volume"
   ) |>
-  mutate(Market = recode(Market, 
-                         `Traded Volume US` = "U.S. Markets",
-                         `Traded Volume Intl` = "International Markets"))
+  mutate(Market = recode(Market,
+    `Traded Volume US` = "U.S. Markets",
+    `Traded Volume Intl` = "International Markets"
+  ))
 
 # Overlaid bar graph
 ggplot(volume_data, aes(x = Year, y = `Traded Volume`, fill = Market)) +
   geom_bar(stat = "identity", position = "dodge") +
   scale_fill_manual(values = c("U.S. Markets" = "darkblue", "International Markets" = "#44b80a")) +
   scale_y_continuous(
-    labels = scales::comma, # Format Y-axis with commas
-    expand = c(0, 0)        # Remove extra space at the bottom of the bars
+    labels = scales::comma,
+    expand = c(0, 0)
   ) +
   scale_x_continuous(
-    breaks = seq(2011, 2023, by = 1), 
-    limits = c(2011, 2023)           
+    breaks = seq(2011, 2023, by = 1),
+    limits = c(2011, 2023)
   ) +
   labs(
     title = "Traded Volume by Year (U.S. and International Markets)",
@@ -584,9 +594,9 @@ ggplot(volume_data, aes(x = Year, y = `Traded Volume`, fill = Market)) +
   theme_minimal() +
   theme(
     plot.title = element_text(hjust = 0.5),
-    axis.text.x = element_text(angle = 45, hjust = 1), 
-    plot.background = element_rect(fill = "gray", color = NA), 
-    panel.background = element_rect(fill = "gray", color = NA) 
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.background = element_rect(fill = "gray", color = NA),
+    panel.background = element_rect(fill = "gray", color = NA)
   )
 ```
 
@@ -619,7 +629,7 @@ ggplot(bonds_and_debts, aes(x = Year, y = Bond_to_Debt_Ratio)) +
 
 Now we'll compare the two plans, TRS and ORP, to get a sense of how each performs, for a CUNY employee who joined in the first month of the historical data.
 
-For this, we'll look at Professor Bob. Bob Started teaching at Baruch back in 1983; he's seen his income increase over time exactly in-line with his fellow Americans, and he's been saving from the minute he took the position. Bob retired in 2013, 30 years after starting. He's now had 10 years of post-retirement pension. Although he is still living pretty reasonably well-off, he wonders if he made the right choice.
+For this, we'll look at Professor Bob. Bob Started teaching at Baruch back in 1983; he's seen his income increase over time exactly in-line with his fellow Americans, and he's been saving from the minute he took the position. Bob retired in 2013, 30 years after starting. He's now had 10 years of post-retirement pension. After this time, he's wondering if he made the right choice.
 
 You see, back in 1983, he was offered two plans. The more traditional plan, the *Teachers Retirement System* (TRS), where Baruch takes the brunt of the market risk for Bob, and the new *Optional Retirement Plan* (ORP), a more aggressive approach to financial planning, which would allow Bob to more directly invest in the market, similar to a 401(k).
 
@@ -635,8 +645,10 @@ First, let's see how Bob did. His starting wage in 1983 was \$52,567 which grew 
 working_bob <- wgs |>
   filter(Year <= 2013) |>
   rename(mwg = `Median Wage Growth`) |>
-  mutate(Income = ifelse(Year == 1983, 52267.01, NA),
-         mwg = (mwg / 100)) |>
+  mutate(
+    Income = ifelse(Year == 1983, 52267.01, NA),
+    mwg = (mwg / 100)
+  ) |>
   select(-`YoY Differential`)
 
 
@@ -654,9 +666,9 @@ print(glue("Professor Bob's starting income in {min(working_bob$Year)} is {dolla
 
 ```{r working-bob-plot_[21], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
-working_bob_plot <- ggplot(working_bob, aes(x = Year, y = Income)) +
-  geom_line(color = "#44b80a", size = 1.5) +  # Line for Income
-  geom_hline(yintercept = 100000, linetype = "dashed", color = "gray") +
+working_bob_plot <- ggplot(working_bob, aes(x = Year, y = Income)) + # they call him the working bob
+  geom_line(color = "#44b80a", size = 1.5) +
+  geom_hline(yintercept = 100000, linetype = "dashed", color = "gray") + # i guess that's what he is
   geom_hline(yintercept = 200000, linetype = "dashed", color = "gray") +
   labs(
     title = "Professor Bob's Income Over Time (1983 - 2013)",
@@ -664,21 +676,20 @@ working_bob_plot <- ggplot(working_bob, aes(x = Year, y = Income)) +
     y = "Income ($)"
   ) +
   scale_x_continuous(
-    breaks = seq(min(working_bob$Year), max(working_bob$Year), by = 5)  
+    breaks = seq(min(working_bob$Year), max(working_bob$Year), by = 5)
   ) +
-  scale_y_continuous(labels = dollar_format(accuracy = 0.01)) + # $ format
+  scale_y_continuous(labels = dollar_format(accuracy = 0.01)) +
   theme_minimal() +
   theme(
     plot.title = element_text(hjust = 0.5),
-    axis.text.x = element_text(angle = 45, hjust = 1), 
-    plot.background = element_rect(fill = "gray", color = NA), 
-    panel.background = element_rect(fill = "gray", color = NA) 
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.background = element_rect(fill = "gray", color = NA),
+    panel.background = element_rect(fill = "gray", color = NA)
   )
 
 working_bob_plot <- working_bob_plot +
   geom_line(aes(text = paste0("Year: ", Year, "<br>Income: ", dollar(Income, accuracy = 0.01))), size = 1, color = NA)
 
-# make it interactive
 bobs_working_plot <- ggplotly(working_bob_plot, tooltip = "text")
 
 bobs_working_plot
@@ -692,7 +703,7 @@ We can monitor Bob's contributions over the years here:
 #| code-fold: TRUE
 
 # TRS employee contribution function
-trs_pct <- function(salary){
+trs_pct <- function(salary) {
   case_when(
     salary <= 45000 ~ 0.03,
     salary <= 55000 ~ 0.035,
@@ -706,37 +717,40 @@ trs_pct <- function(salary){
 # Bob's contributions
 working_bob <- working_bob |>
   mutate(
-    bobs_contributions = round(Income * trs_pct(Income),2)
+    bobs_contributions = round(Income * trs_pct(Income), 2)
   )
 
 
 # View Bob's contributions in-line w/ MWG in the U.S.
 working_bob |>
-  mutate(Income = round(Income,2)) |>
-  rename(`Median Wage Growth (U.S.)`= mwg,
-         `Bob's Income` = Income) |>
+  mutate(Income = round(Income, 2)) |>
+  rename(
+    `Median Wage Growth (U.S.)` = mwg,
+    `Bob's Income` = Income
+  ) |>
   DT::datatable(
-    options = list(pageLength = 11,
-                   columnDefs = list(
-                     # Adding commas for these columns
-                     list(
-                       targets = c(3,4),
-                       render = JS(
-                         "function(data, type, row, meta) {",
-                         "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  
-                         "}"
-                       )
-                     ),
-                     # Formatting as percentages
-                     list(
-                       targets = c(2),
-                       render = JS(
-                         "function(data, type, row, meta) {",
-                         "  return type === 'display' ? (data*100).toFixed(2) + '%' : data;",  # Formatting as percentage
-                         "}"
-                       )
-                     )
-                   )
+    options = list(
+      pageLength = 11,
+      columnDefs = list(
+        # Adding commas for these columns
+        list(
+          targets = c(3, 4),
+          render = JS(
+            "function(data, type, row, meta) {",
+            "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",
+            "}"
+          )
+        ),
+        # Formatting as percentages
+        list(
+          targets = c(2),
+          render = JS(
+            "function(data, type, row, meta) {",
+            "  return type === 'display' ? (data*100).toFixed(2) + '%' : data;", # Formatting as percentage
+            "}"
+          )
+        )
+      )
     )
   )
 
@@ -748,9 +762,9 @@ Then, the retirement benefit is calculated based on a *Final Average Salary*, wh
 #| code-fold: TRUE
 # Bob's FAS
 
-bobs_fas <- sum(tail(working_bob$Income,3))/3
+bobs_fas <- sum(tail(working_bob$Income, 3)) / 3
 
-print(glue("The average salary for Bob's final 3 years of work at CUNY is {dollar(bobs_fas)}.60")) # manually adding the .60 to the printout b/c it's being annoying
+print(glue("The average salary for Bob's final 3 years of work at CUNY is {dollar(bobs_fas)}"))
 ```
 
 Knowing this, we can calculate Bob's annual retirement benefit from CUNY, including how much it increases yearly (in-line with inflation).
@@ -760,11 +774,11 @@ What this means is, the benefit amount is increased annually in-line with the ra
 ```{r bobs-yearly-rate_[24], echo=FALSE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
 ### function for trs' fas calculation
-trs_fas_calculation <- function(years,fas){
+trs_fas_calculation <- function(years, fas) {
   case_when(
-    years < 20 ~ (0.0167 * fas * years)/12,
-    years == 20 ~ (0.0175 * fas * years)/12,
-    years > 20 ~ ((0.35 + 0.02 * years) * fas)/12
+    years < 20 ~ (0.0167 * fas * years) / 12,
+    years == 20 ~ (0.0175 * fas * years) / 12,
+    years > 20 ~ ((0.35 + 0.02 * years) * fas) / 12
   )
 }
 
@@ -774,13 +788,13 @@ initial_savings_from_work <- sum(working_bob$bobs_contributions, na.rm = TRUE)
 initial_savings_from_work
 
 # calculating cuny's starting contribution
-cuny_first_contribution <- trs_fas_calculation(30,bobs_fas)
+cuny_first_contribution <- trs_fas_calculation(30, bobs_fas)
 
 cuny_first_contribution
 
 
-trs_infl_adj <- function(infl){
-  adj = round((infl*50),1)/100
+trs_infl_adj <- function(infl) {
+  adj <- round((infl * 50), 1) / 100
   case_when(
     adj < 0.01 ~ 0.01,
     adj > 0.03 ~ 0.03,
@@ -810,31 +824,31 @@ retirement_bob <- clean_inflation_df |>
     ending_pension = initial_savings_from_work + cuny_first_contribution
   )
 
-for (i in 2:nrow(retirement_bob)){
-  retirement_bob$contribution[i] = (retirement_bob$contribution[i] <- retirement_bob$contribution[i-1] +
-                                      (retirement_bob$contribution[i - 1] * retirement_bob$cpi[i]))
-  
-  retirement_bob$starting_pension[i] = retirement_bob$ending_pension[i - 1]
-  
-  retirement_bob$ending_pension[i] = retirement_bob$starting_pension[i] + retirement_bob$contribution[i]
+for (i in 2:nrow(retirement_bob)) {
+  retirement_bob$contribution[i] <- (retirement_bob$contribution[i] <- retirement_bob$contribution[i - 1] +
+    (retirement_bob$contribution[i - 1] * retirement_bob$cpi[i]))
+
+  retirement_bob$starting_pension[i] <- retirement_bob$ending_pension[i - 1]
+
+  retirement_bob$ending_pension[i] <- retirement_bob$starting_pension[i] + retirement_bob$contribution[i]
 }
 
 
 retirement_bob <- retirement_bob |>
   mutate(
     monthly_pension = ((starting_pension + ending_pension) / 24), # Divide by 2 to get the yearly average, divide by 12 to get the monthly average
-    pension_increase = if_else(row_number()==1,0.0,(monthly_pension - lag(monthly_pension))),
+    pension_increase = if_else(row_number() == 1, 0.0, (monthly_pension - lag(monthly_pension))),
     monthly_contribution = (contribution / 12),
-    contribution_increase = if_else(row_number()==1,0.0,round((contribution - lag(contribution)),2)),
-    contribution_pct_increase = if_else(row_number()==1,0.0,((contribution - lag(contribution))/lag(contribution))) #  this should just mirror the CPI as a check
+    contribution_increase = if_else(row_number() == 1, 0.0, round((contribution - lag(contribution)), 2)),
+    contribution_pct_increase = if_else(row_number() == 1, 0.0, ((contribution - lag(contribution)) / lag(contribution))) #  this should just mirror the CPI as a check
   )
 
 retirement_bob |>
   mutate(
-    ending_pension = round(ending_pension,2),
-    monthly_pension = round(monthly_pension,2),
-    contribution = round(contribution,2),
-    monthly_contribution = round(monthly_contribution,2)
+    ending_pension = round(ending_pension, 2),
+    monthly_pension = round(monthly_pension, 2),
+    contribution = round(contribution, 2),
+    monthly_contribution = round(monthly_contribution, 2)
   ) |>
   select(
     Year,
@@ -844,18 +858,19 @@ retirement_bob |>
     `Monthly Contribution` = monthly_contribution
   ) |>
   DT::datatable(
-    options = list(pageLength = 10,
-                   columnDefs = list(
-                     # Adding commas for these columns
-                     list(
-                       targets = c(2,3,4,5),
-                       render = JS(
-                         "function(data, type, row, meta) {",
-                         "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  
-                         "}"
-                       )
-                     )
-                   )
+    options = list(
+      pageLength = 10,
+      columnDefs = list(
+        # Adding commas for these columns
+        list(
+          targets = c(2, 3, 4, 5),
+          render = JS(
+            "function(data, type, row, meta) {",
+            "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",
+            "}"
+          )
+        )
+      )
     )
   )
 
@@ -882,18 +897,18 @@ NOTE: Due to the fact the data on US Markets, International Markets, U.S. Bonds,
 
 bobs_age <- 40
 
-opr_bob <- working_bob |>
+opr_bob <- working_bob |> # I realize now that I've done most of the project writing `opr` instead of `orp`. Although it would probably be best practice to fix this, I won't. Sorry.
   select(
     Year,
     mwg,
     income = Income
   ) |>
   mutate(
-    age = if_else(row_number()==1,bobs_age,NA_real_)
+    age = if_else(row_number() == 1, bobs_age, NA_real_)
   )
 
-for (i in 2:nrow(opr_bob)){
-  opr_bob$age[i] = opr_bob$age[i - 1] + 1
+for (i in 2:nrow(opr_bob)) {
+  opr_bob$age[i] <- opr_bob$age[i - 1] + 1
 }
 
 # need US Market, International Market, and Bonds data
@@ -903,7 +918,7 @@ for (i in 2:nrow(opr_bob)){
 ### US Market
 us_mkt <- us_monthly_medians |>
   mutate(
-    avg_price = round((Open + Close)/2,2)
+    avg_price = round((Open + Close) / 2, 2)
   ) |>
   select(
     Year,
@@ -930,7 +945,7 @@ filtered_us_mkt_data <- extended_us_mkt_data |>
 ### Intl Market
 intl_mkt <- intl_monthly_medians |>
   mutate(
-    avg_price = round((Open + Close)/2,2)
+    avg_price = round((Open + Close) / 2, 2)
   ) |>
   select(
     Year,
@@ -946,7 +961,7 @@ historical_data <- historical_years |>
 intl_mkt$Year <- as.numeric(as.character(intl_mkt$Year))
 
 # Combine historical and existing data
-extended_intl_mkt_data <- bind_rows(historical_data, intl_mkt) 
+extended_intl_mkt_data <- bind_rows(historical_data, intl_mkt)
 
 filtered_intl_mkt_data <- extended_intl_mkt_data |>
   filter(Year <= 2013)
@@ -1001,7 +1016,7 @@ filtered_debts_data <- extended_debts_data |>
 
 ### combine everything
 
-opr_cont <- function(years_worked,income){
+opr_cont <- function(years_worked, income) {
   case_when(
     years_worked <= 7 ~ case_when(
       income <= 45000 ~ 0.03 * income + (0.08 * income),
@@ -1009,7 +1024,7 @@ opr_cont <- function(years_worked,income){
       income <= 75000 ~ 0.045 * income + (0.08 * income),
       income <= 100000 ~ 0.0575 * income + (0.08 * income),
       income > 100000 ~ 0.06 * income + (0.08 * income)
-      ),
+    ),
     years_worked > 7 ~ case_when(
       income <= 45000 ~ (0.03 * income) + (0.1 * income), # after 7 years CUNY contributes 10%+
       income <= 55000 ~ 0.035 * income + (0.1 * income),
@@ -1027,17 +1042,18 @@ opr_bob <- opr_bob |>
 
 opr_bob_invest <- opr_bob |>
   mutate(
-    yearly_contribution = opr_cont(years_worked,opr_bob$income),
-    monthly_contribution = opr_cont(years_worked,opr_bob$income)/12
+    yearly_contribution = opr_cont(years_worked, opr_bob$income),
+    monthly_contribution = opr_cont(years_worked, opr_bob$income) / 12
   ) |>
   left_join(
-    extended_us_mkt_data, by="Year"
+    extended_us_mkt_data,
+    by = "Year"
   ) |>
   rename(
     `avg_price_us_mkt` = avg_price
   ) |>
   mutate(
-    bought_us_mkt_shares =  case_when(
+    bought_us_mkt_shares = case_when(
       between(age, 25, 49) ~ (yearly_contribution * 0.54) / avg_price_us_mkt,
       between(age, 50, 59) ~ (yearly_contribution * 0.47) / avg_price_us_mkt,
       between(age, 60, 74) ~ (yearly_contribution * 0.34) / avg_price_us_mkt,
@@ -1045,7 +1061,8 @@ opr_bob_invest <- opr_bob |>
     )
   ) |>
   left_join(
-    filtered_intl_mkt_data, by = "Year"
+    filtered_intl_mkt_data,
+    by = "Year"
   ) |>
   rename(
     `avg_price_intl_mkt` = avg_price
@@ -1059,7 +1076,8 @@ opr_bob_invest <- opr_bob |>
     )
   ) |>
   left_join(
-    filtered_bonds_data, by = "Year"
+    filtered_bonds_data,
+    by = "Year"
   ) |>
   mutate(
     bought_bonds = case_when(
@@ -1070,7 +1088,8 @@ opr_bob_invest <- opr_bob |>
     )
   ) |>
   left_join(
-    filtered_debts_data, by = "Year"
+    filtered_debts_data,
+    by = "Year"
   ) |>
   mutate(
     bought_debts = case_when(
@@ -1083,19 +1102,22 @@ opr_bob_invest <- opr_bob |>
 all_markets <- extended_us_mkt_data |>
   rename(
     `avg_price_us_mkt` = avg_price
-    ) |>
+  ) |>
   left_join(
-    extended_intl_mkt_data, by = "Year"
-    ) |>
+    extended_intl_mkt_data,
+    by = "Year"
+  ) |>
   rename(
     `avg_price_intl_mkt` = avg_price
-    ) |>
+  ) |>
   left_join(
-    extended_bonds_data, by = "Year"
-    ) |>
+    extended_bonds_data,
+    by = "Year"
+  ) |>
   left_join(
-    extended_debts_data, by = "Year"
-    ) 
+    extended_debts_data,
+    by = "Year"
+  )
 
 
 filtered_all_markets <- all_markets |>
@@ -1111,14 +1133,14 @@ bob_debts_shares <- sum(opr_bob_invest$bought_debts)
 
 bobs_markets <- filtered_all_markets |>
   mutate(
-    bobs_us_shares = round(bob_us_mkt_shares,3),
-    bobs_us_shares_price = round((avg_price_us_mkt * bob_us_mkt_shares),2),
-    bobs_intl_shares = round(bob_intl_mkt_shares,3),
-    bobs_intl_shares_price = round((avg_price_intl_mkt * bob_intl_mkt_shares),2),
-    bobs_bond_shares = round(bob_bond_shares,3),
-    bobs_bonds_shares_price = round((median_bond_price * bob_bond_shares),2),
-    bobs_debts_shares = round(bob_debts_shares,3),
-    bobs_debts_shares_price = round((avg_debts_price * bob_debts_shares),2)
+    bobs_us_shares = round(bob_us_mkt_shares, 3),
+    bobs_us_shares_price = round((avg_price_us_mkt * bob_us_mkt_shares), 2),
+    bobs_intl_shares = round(bob_intl_mkt_shares, 3),
+    bobs_intl_shares_price = round((avg_price_intl_mkt * bob_intl_mkt_shares), 2),
+    bobs_bond_shares = round(bob_bond_shares, 3),
+    bobs_bonds_shares_price = round((median_bond_price * bob_bond_shares), 2),
+    bobs_debts_shares = round(bob_debts_shares, 3),
+    bobs_debts_shares_price = round((avg_debts_price * bob_debts_shares), 2)
   )
 
 
@@ -1139,38 +1161,39 @@ bobs_markets |>
     `Value of Shares of Debt` = bobs_debts_shares_price
   ) |>
   DT::datatable(
-    options = list(pageLength = 7,
-                   columnDefs = list(
-                     # Adding commas for these columns
-                     list(
-                       targets = c(3,6,9,12),
-                       render = JS(
-                         "function(data, type, row, meta) {",
-                         "  return type === 'display' ? data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  # Adding commas
-                         "}"
-                       )
-                     ),
-                     # accounting format
-                     list(
-                       targets = c(2,4,5,7,8,10,11,13),
-                       render = JS(
-                         "function(data, type, row, meta) {",
-                         "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  
-                         "}"
-                       )
-                     )
-                   )
+    options = list(
+      pageLength = 7,
+      columnDefs = list(
+        # Adding commas for these columns
+        list(
+          targets = c(3, 6, 9, 12),
+          render = JS(
+            "function(data, type, row, meta) {",
+            "  return type === 'display' ? data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;", # Adding commas
+            "}"
+          )
+        ),
+        # accounting format
+        list(
+          targets = c(2, 4, 5, 7, 8, 10, 11, 13),
+          render = JS(
+            "function(data, type, row, meta) {",
+            "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",
+            "}"
+          )
+        )
+      )
     )
   )
 ```
 
 ```{r orp-bob-savings_[26], echo=FALSE, message=FALSE, warning=FALSE}
 bob_total_savings <- (
-  mean(bobs_markets$bobs_us_shares_price) + 
+  mean(bobs_markets$bobs_us_shares_price) +
     mean(bobs_markets$bobs_intl_shares_price) +
     mean(bobs_markets$bobs_bonds_shares_price) +
     mean(bobs_markets$bobs_debts_shares_price)
-  )
+)
 
 print(glue("Bob's total savings with the ORP plan, averaged on the various markets he invested in\n, would give him a final investment portfolio of {dollar(bob_total_savings)}.00.\nThat is significantly more than he received from the TRP."))
 ```
@@ -1191,9 +1214,11 @@ With 1 dog and 1 cat at home, we can estimate Bob's monthly expenses:
 
 ```{r bobs-expenses_[27], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
+
+# creating dummy variables to run numbers off of
 home_purchase_price <- 400000
-price_ptax_2014 <- 0.125
-monthly_col_2014 <- 500
+price_ptax_2014 <- 0.125 # this was the average in 2014
+monthly_col_2014 <- 500 # guesstimate, based off of nothing but vibes
 
 bobs_expenses <- retirement_bob |>
   select(
@@ -1204,48 +1229,50 @@ bobs_expenses <- retirement_bob |>
 
 bobs_expenses <- bobs_expenses |>
   mutate(
-    monthly_property_tax = if_else(row_number() == 1, round((home_purchase_price * price_ptax_2014)/12,2), NA_real_),
-    monthly_col = if_else(row_number() == 1, round(monthly_col_2014 + (monthly_col_2014 * cpi),2), NA_real_)
+    monthly_property_tax = if_else(row_number() == 1, round((home_purchase_price * price_ptax_2014) / 12, 2), NA_real_),
+    monthly_col = if_else(row_number() == 1, round(monthly_col_2014 + (monthly_col_2014 * cpi), 2), NA_real_)
   )
 
-for (i in 2:nrow(bobs_expenses)){
-  bobs_expenses$monthly_property_tax[i] = (bobs_expenses$monthly_property_tax[i] <- bobs_expenses$monthly_property_tax[i - 1] + (bobs_expenses$monthly_property_tax[i - 1] * bobs_expenses$cpi[i]))
-  
-  bobs_expenses$monthly_col[i] = (bobs_expenses$monthly_col[i] <- bobs_expenses$monthly_col[i - 1] + (bobs_expenses$monthly_col[i - 1] * bobs_expenses$cpi[i]))
+# all these for (i in 2:nrow) functions are basically to backfill cols that rely on py data
+for (i in 2:nrow(bobs_expenses)) {
+  bobs_expenses$monthly_property_tax[i] <- (bobs_expenses$monthly_property_tax[i] <- bobs_expenses$monthly_property_tax[i - 1] + (bobs_expenses$monthly_property_tax[i - 1] * bobs_expenses$cpi[i]))
+
+  bobs_expenses$monthly_col[i] <- (bobs_expenses$monthly_col[i] <- bobs_expenses$monthly_col[i - 1] + (bobs_expenses$monthly_col[i - 1] * bobs_expenses$cpi[i]))
 }
 
 
 bobs_expenses <- bobs_expenses |>
   mutate(
-    annual_col = round((monthly_property_tax * 12) + (monthly_col * 12),2),
-    monthly_property_tax = round(monthly_property_tax,2),
-    monthly_col = round(monthly_col,2)
+    annual_col = round((monthly_property_tax * 12) + (monthly_col * 12), 2),
+    monthly_property_tax = round(monthly_property_tax, 2),
+    monthly_col = round(monthly_col, 2)
   )
 
 
 bobs_expenses |>
   DT::datatable(
-    options = list(pageLength = 10,
-                   columnDefs = list(
-                     # Adding commas for these columns
-                     list(
-                       targets = c(3,4,5),
-                       render = JS(
-                         "function(data, type, row, meta) {",
-                         "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  
-                         "}"
-                       )
-                     ),
-                     # Formatting as percentages
-                     list(
-                       targets = c(2),
-                       render = JS(
-                         "function(data, type, row, meta) {",
-                         "  return type === 'display' ? (data*100).toFixed(2) + '%' : data;",  # Formatting as percentage
-                         "}"
-                       )
-                     )
-                   )
+    options = list(
+      pageLength = 10,
+      columnDefs = list(
+        # Adding commas for these columns
+        list(
+          targets = c(3, 4, 5),
+          render = JS(
+            "function(data, type, row, meta) {",
+            "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",
+            "}"
+          )
+        ),
+        # Formatting as percentages
+        list(
+          targets = c(2),
+          render = JS(
+            "function(data, type, row, meta) {",
+            "  return type === 'display' ? (data*100).toFixed(2) + '%' : data;", # Formatting as percentage
+            "}"
+          )
+        )
+      )
     )
   )
 ```
@@ -1273,22 +1300,20 @@ bobs_expenses_trs <- bobs_expenses |>
 
 bobs_expenses_trs <- bobs_expenses_trs |>
   mutate(
-    ending_pension = if_else(row_number() == 1, starting_pension + contribution - annual_col,NA_real_)
+    ending_pension = if_else(row_number() == 1, starting_pension + contribution - annual_col, NA_real_)
   )
 
-for (i in 2:nrow(bobs_expenses_trs)){
-  
-  bobs_expenses_trs$starting_pension[i] = bobs_expenses_trs$ending_pension[i - 1]
-  
-  bobs_expenses_trs$ending_pension[i] = (bobs_expenses_trs$ending_pension[i] <- bobs_expenses_trs$starting_pension[i] + bobs_expenses_trs$contribution[i] - bobs_expenses_trs$annual_col)
+for (i in 2:nrow(bobs_expenses_trs)) {
+  bobs_expenses_trs$starting_pension[i] <- bobs_expenses_trs$ending_pension[i - 1]
 
+  bobs_expenses_trs$ending_pension[i] <- (bobs_expenses_trs$ending_pension[i] <- bobs_expenses_trs$starting_pension[i] + bobs_expenses_trs$contribution[i] - bobs_expenses_trs$annual_col)
 }
 
 bobs_expenses_trs |>
   mutate(
-    contribution = round(contribution,2),
-    starting_pension = round(starting_pension,2),
-    ending_pension = round(ending_pension,2)
+    contribution = round(contribution, 2),
+    starting_pension = round(starting_pension, 2),
+    ending_pension = round(ending_pension, 2)
   ) |>
   rename(
     `Consumer Price Index` = cpi,
@@ -1300,27 +1325,28 @@ bobs_expenses_trs |>
     `Yearly Ending Pension` = ending_pension
   ) |>
   DT::datatable(
-    options = list(pageLength = 10,
-                   columnDefs = list(
-                     # Adding commas for these columns
-                     list(
-                       targets = c(3,4,5,6,7,8),
-                       render = JS(
-                         "function(data, type, row, meta) {",
-                         "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  
-                         "}"
-                       )
-                     ),
-                     # Formatting as percentages
-                     list(
-                       targets = c(2),
-                       render = JS(
-                         "function(data, type, row, meta) {",
-                         "  return type === 'display' ? (data).toFixed(2) + '%' : data;",  # Formatting as percentage
-                         "}"
-                       )
-                     )
-                   )
+    options = list(
+      pageLength = 10,
+      columnDefs = list(
+        # Adding commas for these columns
+        list(
+          targets = c(3, 4, 5, 6, 7, 8),
+          render = JS(
+            "function(data, type, row, meta) {",
+            "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",
+            "}"
+          )
+        ),
+        # Formatting as percentages
+        list(
+          targets = c(2),
+          render = JS(
+            "function(data, type, row, meta) {",
+            "  return type === 'display' ? (data).toFixed(2) + '%' : data;", # Formatting as percentage
+            "}"
+          )
+        )
+      )
     )
   )
 ```
@@ -1330,23 +1356,23 @@ So under the TRS, Bob would be screwed by 2018 if he tried to hold on to that Co
 ```{r bob-withdrawls-fund_[29], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
 
+# looking at bobs expenses w/ orp plan
 bobs_expenses_orp <- bobs_expenses |>
   mutate(
-    funds = if_else(row_number()==1,bob_total_savings,NA_real_)
+    funds = if_else(row_number() == 1, bob_total_savings, NA_real_)
   )
 
-
-for (i in 2:nrow(bobs_expenses_orp)){
-  bobs_expenses$funds[i] = (bobs_expenses$funds[i] <- bobs_expenses$funds[i - 1] - bobs_expenses$annual_col[i])
+for (i in 2:nrow(bobs_expenses_orp)) {
+  bobs_expenses$funds[i] <- (bobs_expenses$funds[i] <- bobs_expenses$funds[i - 1] - bobs_expenses$annual_col[i])
 }
 
 bobs_expenses_orp <- bobs_expenses_orp |>
   mutate(
-    funds = round(funds,2)
+    funds = round(funds, 2)
   )
 
-for (i in 2:nrow(bobs_expenses_orp)){
-  bobs_expenses_orp$funds[i] = round((bobs_expenses_orp$funds[i - 1] - bobs_expenses$annual_col[i]),2)
+for (i in 2:nrow(bobs_expenses_orp)) {
+  bobs_expenses_orp$funds[i] <- round((bobs_expenses_orp$funds[i - 1] - bobs_expenses$annual_col[i]), 2)
 }
 
 bobs_expenses_orp |>
@@ -1358,27 +1384,28 @@ bobs_expenses_orp |>
     `Withdrawable Funds` = funds
   ) |>
   DT::datatable(
-    options = list(pageLength = 10,
-                   columnDefs = list(
-                     # Adding commas for these columns
-                     list(
-                       targets = c(3,4,5,6),
-                       render = JS(
-                         "function(data, type, row, meta) {",
-                         "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",  
-                         "}"
-                       )
-                     ),
-                     # Formatting as percentages
-                     list(
-                       targets = c(2),
-                       render = JS(
-                         "function(data, type, row, meta) {",
-                         "  return type === 'display' ? (data).toFixed(2) + '%' : data;",  # Formatting as percentage
-                         "}"
-                       )
-                     )
-                   )
+    options = list(
+      pageLength = 10,
+      columnDefs = list(
+        # Adding commas for these columns
+        list(
+          targets = c(3, 4, 5, 6),
+          render = JS(
+            "function(data, type, row, meta) {",
+            "  return type === 'display' ? '$ ' + data.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') : data;",
+            "}"
+          )
+        ),
+        # Formatting as percentages
+        list(
+          targets = c(2),
+          render = JS(
+            "function(data, type, row, meta) {",
+            "  return type === 'display' ? (data).toFixed(2) + '%' : data;", # Formatting as percentage
+            "}"
+          )
+        )
+      )
     )
   )
 ```
@@ -1396,11 +1423,11 @@ bootstrap_resample <- function(data, n_samples = 200) {
   replicate(n_samples, data[sample(nrow(data), replace = TRUE), ], simplify = FALSE)
 }
 
-# resample each dataset
+# resample
 trs_bootstrap_samples <- bootstrap_resample(retirement_bob)
 orp_bootstrap_samples <- bootstrap_resample(bobs_markets)
 
-# 10 year projection
+# 10 years
 simulate_projection <- function(bootstrap_samples, years = 10) {
   projections <- lapply(bootstrap_samples, function(sample) {
     sample |>
@@ -1421,7 +1448,7 @@ projections <- data.frame(
 )
 
 
-# summarize projections
+# summary
 projection_summary <- projections |>
   summarise(
     TRS_Mean = mean(TRS_Monthly_Pension, na.rm = TRUE),
@@ -1431,21 +1458,23 @@ projection_summary <- projections |>
   ) |>
   pivot_longer(cols = everything(), names_to = c("Group", ".value"), names_sep = "_")
 
-
+# plot projs
 ggplot(projection_summary, aes(x = Group, y = Mean, fill = Group)) +
   geom_bar(stat = "identity", position = position_dodge(), alpha = 0.7) +
   geom_errorbar(aes(ymin = Mean - SD, ymax = Mean + SD), width = 0.2, position = position_dodge(0.9)) + # on average, how off are we?
   scale_y_continuous(labels = comma) +
   labs(
     title = "Bootstrapped Monte Carlo Projections (10-Year Outlook)",
-    x = "Projection Type",
+    x = "Retirement Fund",
     y = "Projected Value"
   ) +
   scale_fill_manual(values = c("#2386ca", "#ebb78b")) +
   theme_minimal() +
-  theme(legend.position = "none",
-        plot.background = element_rect(fill = "gray75"),
-        panel.background = element_rect(fill = "gray75", color = NA))
+  theme(
+    legend.position = "none",
+    plot.background = element_rect(fill = "gray75"),
+    panel.background = element_rect(fill = "gray75", color = NA)
+  )
 ```
 
 This seems to conclude in favor of ORP. Looking at a 4% monthly withdrawal rate:
@@ -1453,6 +1482,7 @@ This seems to conclude in favor of ORP. Looking at a 4% monthly withdrawal rate:
 ```{r bob-withdrawls-rates-bootstrapped_[31], echo=TRUE, message=FALSE, warning=FALSE}
 #| code-fold: TRUE
 
+# simulating projections using bootstrap function with a withdrawl rate of 4% per year for 10 yrs
 simulate_projection_with_withdrawals <- function(bootstrap_samples, years = 10, withdrawal_rate = 0.04, type = "TRS") {
   projections <- lapply(bootstrap_samples, function(sample) {
     if (type == "TRS") {
@@ -1470,19 +1500,19 @@ simulate_projection_with_withdrawals <- function(bootstrap_samples, years = 10, 
             bobs_us_shares_price + bobs_intl_shares_price + bobs_bonds_shares_price + bobs_debts_shares_price,
             na.rm = TRUE
           ),
-          avg_contributions = 0 
+          avg_contributions = 0
         )
     }
-    
+
     funds <- numeric(years)
     funds[1] <- projected_funds$avg_starting_funds + projected_funds$avg_contributions
     for (i in 2:years) {
       funds[i] <- funds[i - 1] * (1 - withdrawal_rate)
     }
-    
+
     return(data.frame(Year = 1:years, Remaining_Funds = funds))
   })
-  
+
   bind_rows(projections, .id = "Bootstrap_Sample")
 }
 
@@ -1492,7 +1522,6 @@ orp_withdrawals <- simulate_projection_with_withdrawals(orp_bootstrap_samples, t
 trs_withdrawals$Type <- "TRS"
 orp_withdrawals$Type <- "ORP"
 
-# Combine data
 withdrawal_projections <- bind_rows(trs_withdrawals, orp_withdrawals)
 
 main_projections <- withdrawal_projections |>
@@ -1501,21 +1530,21 @@ main_projections <- withdrawal_projections |>
     Mean_Remaining_Funds = mean(Remaining_Funds, na.rm = TRUE),
     .groups = "drop"
   ) |>
-  mutate(Year = Year + 2013) 
+  mutate(Year = Year + 2013)
 
 # callout start and end funds
 callout_data <- main_projections |>
   filter(Year == 2014 | Year == 2023)
 
 ggplot(main_projections, aes(x = Year, y = Mean_Remaining_Funds, color = Type)) +
-  geom_line(size = 1.2) +  
+  geom_line(size = 1.2) +
   geom_text(
     data = callout_data,
     aes(label = scales::comma(round(Mean_Remaining_Funds))),
     vjust = -0.5,
     size = 4,
     show.legend = FALSE
-  ) +  
+  ) +
   labs(
     title = "Remaining Funds Over 10 Years with 4% Withdrawal Rate",
     x = "Year",
@@ -1523,14 +1552,15 @@ ggplot(main_projections, aes(x = Year, y = Mean_Remaining_Funds, color = Type)) 
     color = "Projection Type"
   ) +
   scale_fill_manual(values = c("#2386ca", "#ebb78b")) +
-  scale_y_continuous(labels = scales::comma) +  # Format y-axis
-  scale_x_continuous(breaks = seq(2014, 2023, 1)) +  # Adjust x-axis to show years
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_continuous(breaks = seq(2014, 2023, 1)) +
   theme_minimal() +
-  theme(legend.position = "right",
-        plot.background = element_rect(fill = "gray90"),
-        panel.background = element_rect(fill = "gray90", color = NA),
-        panel.grid.major = element_line(color = "gray20", size = 0.35),
-        panel.grid.minor = element_line(color = "gray30", size = 0.35)
+  theme(
+    legend.position = "right",
+    plot.background = element_rect(fill = "gray90"),
+    panel.background = element_rect(fill = "gray90", color = NA),
+    panel.grid.major = element_line(color = "gray20", size = 0.35),
+    panel.grid.minor = element_line(color = "gray30", size = 0.35)
   )
 ```
 
